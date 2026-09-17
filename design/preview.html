@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>snap-box 컴포넌트 미리보기</title>
+<link rel="icon" type="image/png" href="../assets/img/favicon.png">
+<link rel="stylesheet" href="../assets/fonts/pretendard.css">
+<link rel="stylesheet" href="../css/all.min.css">
+<link rel="stylesheet" href="../css/maker-ui.css">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  body{height:auto;overflow:auto}
+  .mk-main{flex-direction:column}
+  .pan{width:100%!important}
+  .sw{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .chip{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink3);font-weight:700}
+  .chip b{display:block;width:34px;height:22px;border-radius:5px;border:1px solid var(--line)}
+  .note{font-size:11px;color:var(--ink3);margin:2px 0 10px}
+</style>
+</head>
+<body>
+
+<header data-tab="preview.html">
+  <h1><img src="../assets/img/maker-logo.png" alt=""><span class="brand-txt">snap-box</span></h1>
+  <span class="brand-sub">컴포넌트 미리보기</span>
+  <span style="flex:1"></span>
+  <span class="badge ok">준비 완료</span>
+  <button class="hbtn" type="button"><i class="fa-solid fa-expand"></i></button>
+  <button id="langToggle" type="button">EN</button>
+</header>
+
+<div id="steps">
+  <button class="stp done"><span class="cir">1</span>지나온 단계</button>
+  <div class="stpline"></div>
+  <button class="stp on"><span class="cir">2</span>지금 단계</button>
+  <div class="stpline"></div>
+  <button class="stp"><span class="cir">3</span>앞으로 올 단계</button>
+</div>
+
+<div class="mk-main">
+
+  <section class="pan">
+    <div class="ph"><i class="fa-solid fa-palette"></i>색 토큰<span class="ph-count num">12</span></div>
+    <div class="pb">
+      <p class="note">새 색을 만들지 않습니다. 아래 토큰만 씁니다.</p>
+      <div class="sw">
+        <span class="chip"><b style="background:var(--paper)"></b>--paper</span>
+        <span class="chip"><b style="background:var(--panel)"></b>--panel</span>
+        <span class="chip"><b style="background:var(--panel2)"></b>--panel2</span>
+        <span class="chip"><b style="background:var(--line-soft)"></b>--line-soft</span>
+        <span class="chip"><b style="background:var(--line)"></b>--line</span>
+        <span class="chip"><b style="background:var(--line-d)"></b>--line-d</span>
+        <span class="chip"><b style="background:var(--ink)"></b>--ink</span>
+        <span class="chip"><b style="background:var(--ink3)"></b>--ink3</span>
+        <span class="chip"><b style="background:var(--acc)"></b>--acc</span>
+        <span class="chip"><b style="background:var(--acc-ink)"></b>--acc-ink</span>
+        <span class="chip"><b style="background:var(--acc-soft)"></b>--acc-soft</span>
+        <span class="chip"><b style="background:var(--ok)"></b>--ok</span>
+        <span class="chip"><b style="background:var(--warn)"></b>--warn</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="pan">
+    <div class="ph"><i class="fa-solid fa-hand-pointer"></i>버튼 · 입력</div>
+    <div class="pb">
+      <p class="note">.db 기본 / .go 주 동작 / .on 눌림 / .warn 강한 경고 / .danger 조용한 지우기</p>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="db">기본</button>
+        <button class="db go"><i class="fa-solid fa-check"></i>적용</button>
+        <button class="db on"><i class="fa-solid fa-vector-square"></i>눌림</button>
+        <button class="db warn">강한 경고</button>
+        <button class="db danger"><i class="fa-solid fa-trash-can"></i>지우기</button>
+        <button class="db" disabled>잠김</button>
+      </div>
+
+      <div class="sec2">
+        <div class="st">.pickrow — 하나 고르기</div>
+        <div class="pickrow">
+          <button class="db on">모자이크</button>
+          <button class="db">흐리게</button>
+          <button class="db">그림</button>
+        </div>
+
+        <div class="st">.rangerow — 라벨 + 슬라이더 + 숫자</div>
+        <div class="rangerow">
+          <label for="pv1">칸 수</label>
+          <input type="range" id="pv1" min="3" max="8" value="5">
+          <output class="num">5</output>
+        </div>
+
+        <div class="st">.fieldrow — 라벨 + 입력칸 + 단위</div>
+        <div class="fieldrow"><label for="pv2">긴 변</label>
+          <input class="inp" type="number" id="pv2" value="1600"><span class="unit">px</span></div>
+
+        <div class="st">.minirow — 작은 입력 여러 개</div>
+        <div class="row minirow">
+          <label class="mini">색<input type="color" value="#B4451C"></label>
+          <label class="mini">굵기<input class="inp" type="number" value="4"></label>
+          <label class="mini">글자 크기<input class="inp" type="number" value="36"></label>
+        </div>
+
+        <div class="st">.filebtn — 파일 고르기</div>
+        <label class="db filebtn" for="pv3"><i class="fa-solid fa-image"></i>PNG 고르기</label>
+        <input type="file" id="pv3">
+        <label class="db filebtn off" for="pv4" style="margin-top:6px"><i class="fa-solid fa-image"></i>잠긴 상태 (.off)</label>
+        <input type="file" id="pv4">
+      </div>
+    </div>
+  </section>
+
+  <section class="pan">
+    <div class="ph"><i class="fa-solid fa-list"></i>목록 · 요약 · 진행률</div>
+    <div class="pb">
+      <div class="st">.dropzone (.slim = 목록이 있을 때)</div>
+      <div class="dropzone"><i class="fa-solid fa-plus"></i><br>사진을 여기에 놓거나 눌러서 고릅니다</div>
+      <div class="dropzone slim" style="margin-top:8px"><i class="fa-solid fa-plus"></i>사진을 여기에 놓거나 눌러서 고릅니다</div>
+
+      <div class="sec2">
+        <div class="st">.qitem — 썸네일 목록</div>
+        <div id="pvList"></div>
+      </div>
+
+      <div class="sec2">
+        <div class="st">.summary — 지금 설정</div>
+        <div class="summary">
+          <div class="srow"><span class="sk">저장 형식</span><span class="sv mono">JPG 88</span></div>
+          <div class="srow"><span class="sk">긴 변</span><span class="sv mono">1600 px</span></div>
+          <div class="srow"><span class="sk">파일 이름</span><span class="sv mono">서울초등학교_2026-09-17_01.jpg</span></div>
+        </div>
+        <div class="st" style="margin-top:12px">.namepv — 결과 미리보기</div>
+        <div class="namepv mono">{학교명} {사업명} {날짜} {번호} {원래이름}</div>
+      </div>
+
+      <div class="sec2">
+        <div class="st">.prg — 진행률</div>
+        <div class="prg">
+          <div class="lb"><span>얼굴 가리기 · IMG_0101</span><span class="num">2 / 5</span></div>
+          <div class="track"><div class="fill" style="width:40%"></div></div>
+        </div>
+      </div>
+
+      <div class="sec2">
+        <div class="st">.iconpick — 그림 고르기</div>
+        <div class="iconpick" id="pvIcons"></div>
+      </div>
+
+      <div class="sec2">
+        <div class="st">.hint — 도움말 한 줄</div>
+        <div class="hint">칸 수가 적을수록 더 많이 가립니다. 얼굴 너비를 8칸보다 잘게 쪼개지는 않습니다.</div>
+      </div>
+    </div>
+    <div class="pf">
+      <button class="db danger"><i class="fa-solid fa-trash-can"></i>고른 것 빼기</button>
+      <button class="db danger">모두 비우기</button>
+    </div>
+  </section>
+</div>
+
+<div class="mk-bar">
+  <button class="db"><i class="fa-solid fa-chevron-left"></i></button>
+  <span class="num" id="posLabel">1 / 3</span>
+  <button class="db"><i class="fa-solid fa-chevron-right"></i></button>
+  <span class="bar-div"></span>
+  <button class="db go pending"><i class="fa-solid fa-check"></i>적용</button>
+  <button class="db"><i class="fa-solid fa-rotate-left"></i>되돌리기</button>
+  <button class="db danger"><i class="fa-solid fa-clock-rotate-left"></i>원본으로</button>
+  <span class="bar-div"></span>
+  <button class="db"><i class="fa-solid fa-layer-group"></i>전체 한꺼번에 가리기</button>
+  <span class="bar-sp"></span>
+  <div class="prg" style="width:230px">
+    <div class="lb"><span>대기</span><span class="num">0 / 0</span></div>
+    <div class="track"><div class="fill" style="width:0"></div></div>
+  </div>
+</div>
+
+<div id="toast" class="on">토스트 — 2.4초 뒤 사라집니다</div>
+
+<script src="../js/i18n.js"></script>
+<script src="../js/convert.js"></script>
+<script src="../js/face.js"></script>
+<script>
+(function () {
+  // .qitem 예시
+  var rows = [['IMG_0101','처리함 · 1400×950','done'],['IMG_0102','대기 · 1400×950',''],['IMG_0103','오류 · 1200×800','bad']];
+  var box = document.getElementById('pvList');
+  rows.forEach(function (r, i) {
+    var d = document.createElement('div');
+    d.className = 'qitem' + (i === 0 ? ' on' : '') + (r[2] === 'bad' ? ' bad' : '');
+    d.innerHTML = '<input type="checkbox"><span class="idx num">' + (i + 1) + '</span>' +
+      '<span class="th"></span><div class="meta"><div class="nm">' + r[0] + '</div>' +
+      '<div class="mt ' + r[2] + '">' + r[1] + '</div></div>';
+    box.appendChild(d);
+  });
+  // .iconpick 예시 — 실제 얼굴 대체 그림을 그대로 보여 준다
+  var ip = document.getElementById('pvIcons');
+  SnapLab.ICONS.forEach(function (ic, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    if (i === 0) b.className = 'on';
+    b.innerHTML = '<img src="' + ic.url + '" alt="">';
+    ip.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

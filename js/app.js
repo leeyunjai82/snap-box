@@ -1,4 +1,8 @@
-/* app.js — 상태, 파일 큐, 탭/라우팅, 굽기 파이프라인, 일괄 처리 */
+/* app.js — 상태, 사진 목록, 단계 이동, 굽기 파이프라인, 한꺼번에 처리
+ *
+ * 화면 문구는 한국어 원문을 그대로 쓴다 (js/i18n.js 규약).
+ * 번역이 필요한 문장은 GL_T('한국어') / GL_TF('한국어 {n}장', {n:3}) 으로 감싼다.
+ */
 (function () {
   'use strict';
 
@@ -6,79 +10,100 @@
   var F = SnapLab.face;
   var E = SnapLab.editor;
   var X = SnapLab.exporter;
-  var T = SnapLab.i18n.t;
+  var T = GL_T, TF = GL_TF;
 
-  var LS_KEY = 'snapbox.settings';
+  var LS_KEY = 'snapbox.settings';          // 저장 키 규약: <서비스>.<이름>
+  var STEPS = ['face', 'edit', 'conv', 'out'];
+  var STEP_META = {
+    face: { title: '얼굴 가리기', icon: 'fa-eye-slash' },
+    edit: { title: '다듬기', icon: 'fa-sliders' },
+    conv: { title: '크기·용량', icon: 'fa-compress' },
+    out:  { title: '내보내기', icon: 'fa-file-export' }
+  };
 
-  /* ── 상태 ──────────────────────────────────────────────── */
   var state = {
     items: [],
     index: -1,
     seq: 0,
+    step: 'face',
     settings: {
       conf: 0.5,
       maskType: 'pixelate',
-      block: 14,
-      blurPct: 45,
-      iconId: 'smile',
+      cols: 5,
+      blurPct: 60,
+      iconId: 'person',
       customURL: '',
       adjLive: { b: 100, c: 100, s: 100 },
-      annot: { color: '#ff3b30', width: 4, size: 36 },
+      annot: { color: '#B4451C', width: 4, size: 36 },
       stamp: { project: '', school: '', date: '' },
       resizeLong: 1600,
       targetKB: 0,
       format: 'image/jpeg',
       quality: 88,
-      nameTemplate: '{school}_{date}_{n}',
+      nameTemplate: '{학교명}_{날짜}_{번호}',
       sheetLayout: '2x2'
     }
   };
 
   var cur = null;   // {item, img, preview, previewAdjusted, scale}
+
+  /* 사진이 없으면 눌러 봐야 안내만 뜨는 버튼들 — 아예 잠가 둔다 */
+  var NEEDS_PHOTO = [
+    'btnRedetect', 'btnApplyToSelected', 'btnApplyToAll', 'btnDelBox', 'btnClearBoxes',
+    'btnRotate', 'btnFlip', 'btnCropStart', 'btnAdjReset',
+    'btnAddText', 'btnAddRect', 'btnAddArrow', 'btnAddStamp', 'btnStampAll',
+    'btnConvertCurrent', 'btnConvertAll',
+    'btnDownloadCurrent', 'btnDownloadZip', 'btnContactSheet', 'btnPhotoPdf', 'btnMerge',
+    'btnRemoveSel', 'btnClearQueue'
+  ];
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
 
-  /* ── 알림 / 진행률 ─────────────────────────────────────── */
-  function toast(msg, kind) {
-    var d = document.createElement('div');
-    d.className = 'toast' + (kind ? ' ' + kind : '');
-    d.textContent = msg;
-    $('#toasts').appendChild(d);
-    setTimeout(function () {
-      d.style.transition = 'opacity .3s'; d.style.opacity = '0';
-      setTimeout(function () { d.remove(); }, 320);
-    }, 3200);
+  /* ── 알림 · 진행률 ─────────────────────────────────────── */
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('on'); }, 2400);
   }
 
   function busy(on, text) {
     $('#busy').hidden = !on;
-    $('#busyText').textContent = text || T('msg.working');
+    $('#busyText').textContent = text || T('처리하는 중입니다');
   }
 
-  function progress(i, n, label) {
+  function progress(i, n, label, name) {
     var w = $('#progressWrap');
     if (n == null) { w.hidden = true; return; }
     w.hidden = false;
-    $('#progressBar').firstElementChild.style.width = (n ? (i / n * 100) : 0) + '%';
-    $('#progressText').textContent = (label ? label + ' ' : '') + i + ' / ' + n;
+    $('#progressFill').style.width = (n ? Math.round(i / n * 100) : 0) + '%';
+    $('#progressText').textContent = (label || '') + (name ? ' · ' + name : '');
+    $('#progressPct').textContent = i + ' / ' + n;
   }
 
-  /* ── 설정 저장 ─────────────────────────────────────────── */
+  function setEngine(text, ok) {
+    var el = $('#engine');
+    if (!el) return;
+    el.textContent = T(text);
+    el.classList.toggle('ok', !!ok);
+  }
+
+  /* ── 설정 저장 (스탬프 입력값·마지막 설정값만. 이미지 저장 금지) ── */
   function loadSettings() {
     try {
       var raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
       var s = JSON.parse(raw);
-      // 이미지 데이터는 저장하지 않는다. 입력값·마지막 설정만.
       delete s.customURL;
+      delete s.adjLive;
       Object.keys(s).forEach(function (k) {
-        if (k in state.settings) {
-          if (typeof state.settings[k] === 'object' && state.settings[k] !== null) {
-            Object.assign(state.settings[k], s[k]);
-          } else state.settings[k] = s[k];
-        }
+        if (!(k in state.settings)) return;
+        if (state.settings[k] && typeof state.settings[k] === 'object') Object.assign(state.settings[k], s[k]);
+        else state.settings[k] = s[k];
       });
-    } catch (e) { /* 무시 */ }
+    } catch (e) { /* 저장값이 깨졌으면 기본값으로 간다 */ }
   }
 
   function saveSettings() {
@@ -87,10 +112,10 @@
       delete s.customURL;
       delete s.adjLive;
       localStorage.setItem(LS_KEY, JSON.stringify(s));
-    } catch (e) { /* 무시 */ }
+    } catch (e) { /* 저장 못 해도 기능은 계속 쓴다 */ }
   }
 
-  /* ── 파일 큐 ───────────────────────────────────────────── */
+  /* ── 사진 목록 ─────────────────────────────────────────── */
   function currentItem() { return state.index >= 0 ? state.items[state.index] : null; }
 
   function withImage(item, fn) {
@@ -105,24 +130,24 @@
   function addFiles(fileList) {
     var files = Array.prototype.slice.call(fileList);
     if (!files.length) return Promise.resolve();
-    var accepted = files.filter(C.isSupported);
+    var ok = files.filter(C.isSupported);
     files.filter(function (f) { return !C.isSupported(f); })
-      .forEach(function (f) { toast(T('msg.unsupported', { name: f.name }), 'err'); });
-    if (!accepted.length) return Promise.resolve();
+      .forEach(function (f) { toast(T('받을 수 없는 형식입니다') + ' — ' + f.name); });
+    if (!ok.length) return Promise.resolve();
 
     busy(true);
     var added = 0;
     var chain = Promise.resolve();
-    accepted.forEach(function (file, i) {
+    ok.forEach(function (file, i) {
       chain = chain.then(function () {
-        progress(i, accepted.length, 'load');
+        progress(i, ok.length, T('사진 목록'), file.name);
         return C.toWebSafeBlob(file).catch(function () {
-          toast(T('msg.heicFail', { name: file.name }), 'err');
+          toast(T('HEIC를 바꾸지 못했습니다') + ' — ' + file.name);
           return null;
         }).then(function (blob) {
           if (!blob) return;
           return C.loadImageFromBlob(blob).then(function (img) {
-            var item = {
+            state.items.push({
               id: 'i' + (++state.seq),
               origName: C.baseName(file.name),
               blob: blob,
@@ -137,13 +162,10 @@
               history: [],
               stash: null,
               checked: false
-            };
+            });
             C.releaseImage(img);
-            state.items.push(item);
             added++;
-          }).catch(function () {
-            toast(T('msg.loadFail', { name: file.name }), 'err');
-          });
+          }).catch(function () { toast(T('사진을 열지 못했습니다') + ' — ' + file.name); });
         });
       });
     });
@@ -152,38 +174,65 @@
       progress(null);
       busy(false);
       renderQueue();
-      if (added) toast(T('msg.added', { n: added }), 'ok');
       if (state.index < 0 && state.items.length) return selectItem(0);
     });
   }
 
+  var STATUS_TEXT = { wait: '대기', ready: '대기', busy: '처리하는 중입니다', done: '처리함', err: '오류' };
+
   function renderQueue() {
-    var ul = $('#queueList');
-    ul.innerHTML = '';
+    var box = $('#queueList');
+    box.innerHTML = '';
     state.items.forEach(function (it, i) {
-      var li = document.createElement('li');
-      li.className = (i === state.index ? 'active' : '') + (it.status === 'err' ? ' err' : '');
+      var row = document.createElement('div');
+      row.className = 'qitem' + (i === state.index ? ' on' : '') + (it.status === 'err' ? ' bad' : '');
+
       var cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = !!it.checked;
-      cb.addEventListener('click', function (e) { e.stopPropagation(); it.checked = cb.checked; });
-      var img = document.createElement('img');
-      img.src = it.thumb; img.alt = '';
+      cb.title = T('전·후 붙이기');
+      cb.addEventListener('click', function (e) {
+        e.stopPropagation(); it.checked = cb.checked; renderQueue();
+      });
+
+      var im = document.createElement('img');
+      im.className = 'th'; im.src = it.thumb; im.alt = '';
+
       var meta = document.createElement('div');
       meta.className = 'meta';
-      meta.innerHTML = '<div class="nm"></div><div class="st"></div>';
-      meta.querySelector('.nm').textContent = it.origName;
-      var st = meta.querySelector('.st');
-      st.textContent = T('st.' + it.status) + ' · ' + it.width + '×' + it.height;
-      st.className = 'st ' + (it.status === 'done' ? 'done' : it.status === 'busy' ? 'busy' : it.status === 'err' ? 'err' : '');
-      li.appendChild(cb); li.appendChild(img); li.appendChild(meta);
-      li.addEventListener('click', function () { selectItem(i); });
-      ul.appendChild(li);
+      var nm = document.createElement('div');
+      nm.className = 'nm'; nm.textContent = it.origName; nm.title = it.origName;
+      var mt = document.createElement('div');
+      mt.className = 'mt' + (it.status === 'done' ? ' done' : it.status === 'err' ? ' bad' : '');
+      mt.textContent = T(STATUS_TEXT[it.status] || '대기') + ' · ' + it.width + '×' + it.height;
+      meta.appendChild(nm); meta.appendChild(mt);
+
+      var idx = document.createElement('span');
+      idx.className = 'idx num'; idx.textContent = i + 1;
+
+      row.appendChild(cb); row.appendChild(idx); row.appendChild(im); row.appendChild(meta);
+      row.addEventListener('click', function () { selectItem(i); });
+      box.appendChild(row);
+      if (i === state.index) setTimeout(function () {
+        if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+      }, 0);
     });
     $('#queueCount').textContent = state.items.length;
+    $('#posLabel').textContent = (state.items.length ? state.index + 1 : 0) + ' / ' + state.items.length;
+    $('#btnPrev').disabled = state.index <= 0;
+    $('#btnNext').disabled = state.index < 0 || state.index >= state.items.length - 1;
+    $('#btnBatchAll').disabled = !state.items.length;
+    setToolsEnabled(state.items.length > 0);
+    var picked = state.items.filter(function (i) { return i.checked; }).length;
+    var mg = $('#btnMerge');
+    mg.disabled = (picked !== 2);
+    mg.title = picked === 2 ? '' : T('왼쪽 목록에서 두 장을 체크해 주세요');
+    $('#dropZone').classList.toggle('slim', state.items.length > 0);
+    $('#queueHint').hidden = state.items.length > 0;
+    updateApplyState();
     updateNamePreview();
   }
 
-  /* ── 이미지 선택/로드 ──────────────────────────────────── */
+  /* ── 사진 열기 ─────────────────────────────────────────── */
   function releaseCurrent() {
     if (!cur) return;
     cur.item.stash = E.hasPending() ? E.stash() : null;
@@ -214,6 +263,7 @@
       E.setSource(adjusted);
       $('#stageEmpty').hidden = true;
       $('#stageName').textContent = item.origName;
+      $('#stageName').title = item.origName;
       $('#stageDims').textContent = item.width + ' × ' + item.height;
 
       if (item.stash) {
@@ -224,48 +274,43 @@
       console.error(e);
       item.status = 'err';
       renderQueue();
-      toast(T('msg.loadFail', { name: item.origName }), 'err');
+      toast(T('사진을 열지 못했습니다') + ' — ' + item.origName);
     });
   }
 
-  /* ── 얼굴 검출 ─────────────────────────────────────────── */
+  /* ── 얼굴 찾기 ─────────────────────────────────────────── */
   function currentDef() {
     var s = state.settings;
-    return {
-      type: s.maskType, block: s.block, blurPct: s.blurPct,
-      iconId: s.iconId, customURL: s.customURL
-    };
+    return { type: s.maskType, cols: s.cols, blurPct: s.blurPct, iconId: s.iconId, customURL: s.customURL };
   }
 
   function autoDetect(force) {
     if (!cur) return Promise.resolve();
     var item = cur.item;
     if (item.detTried && !force && item.detRaw) return rebuildDetectionMasks();
-    $('#detectState').textContent = T('msg.detecting');
+    $('#detectState').textContent = T('얼굴을 찾는 중입니다');
     return F.detect(cur.preview).then(function (raw) {
       item.detRaw = raw;
       item.detTried = true;
+      setEngine('준비 완료', true);
       return rebuildDetectionMasks().then(function () {
         var n = E.masks().filter(function (o) { return o.data.fromDetect; }).length;
-        if (!n) toast(T('msg.detectNone'));
+        if (!n) toast(T('찾은 얼굴이 없습니다. 칸을 직접 그려 주세요'));
       });
     }).catch(function (e) {
       console.warn('face detect failed', e);
       item.detTried = true;
       item.detRaw = [];
-      $('#detectState').textContent = '';
-      toast(T('msg.detectFail'), 'err');
+      setEngine('얼굴 찾기 못 씀', false);
+      updateDetectLabel();
+      toast(T('얼굴 찾기를 불러오지 못했습니다. 주소창이 file:// 이면 http:// 로 열어 주세요'));
     });
   }
 
   function rebuildDetectionMasks() {
     if (!cur) return Promise.resolve();
-    var item = cur.item;
-    E.masks().forEach(function (o) {
-      if (o.data.fromDetect) E.canvas.remove(o);
-    });
-    var raw = item.detRaw || [];
-    var boxes = F.toBoxes(raw, state.settings.conf, 1, E.previewW, E.previewH);
+    E.masks().forEach(function (o) { if (o.data.fromDetect) E.canvas.remove(o); });
+    var boxes = F.toBoxes(cur.item.detRaw || [], state.settings.conf, 1, E.previewW, E.previewH);
     var def = currentDef();
     return F.ensureAssets(def).then(function () {
       boxes.forEach(function (b) {
@@ -278,21 +323,55 @@
   }
 
   function updateDetectLabel() {
+    var el = $('#detectState');
+    if (!state.items.length) { el.textContent = T('사진을 넣어 주세요'); el.classList.remove('ok'); return; }
     var all = E.masks();
-    var det = all.filter(function (o) { return o.data.fromDetect; }).length;
-    $('#detectState').textContent = T('ph.faces', { n: det, b: all.length });
+    var it = currentItem();
+    if (!all.length && it && it.status === 'done') {
+      el.textContent = T('가림 처리함');
+      el.classList.add('ok');
+    } else {
+      var det = all.filter(function (o) { return o.data.fromDetect; }).length;
+      el.textContent = TF('찾은 얼굴 {n} · 칸 {b}', { n: det, b: all.length });
+      el.classList.toggle('ok', all.length > 0);
+    }
+    updateApplyState();
   }
 
-  /* ── 색 보정 미리보기 ──────────────────────────────────── */
+  function setToolsEnabled(on) {
+    NEEDS_PHOTO.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.disabled = !on;
+    });
+    $$('.filebtn[data-needs-photo]').forEach(function (el) { el.classList.toggle('off', !on); });
+  }
+
+  /* 아직 굽지 않은 변경이 있는지 — 적용/되돌리기 버튼에 그대로 비춘다 */
+  function hasPending() {
+    return !!cur && (E.hasPending() || !C.isNeutral(state.settings.adjLive));
+  }
+
+  function updateApplyState() {
+    var p = hasPending();
+    var b = $('#btnApply');
+    b.disabled = !p;
+    b.classList.toggle('pending', p);
+    $('#btnUndo').disabled = !p && !(currentItem() && currentItem().history.length);
+    $('#btnRevert').disabled = !currentItem();
+    $('#btnApply').title = p ? T('바꾼 것을 사진에 굽습니다') : T('적용할 것이 없습니다');
+  }
+
+  /* ── 밝기·색 미리보기 ──────────────────────────────────── */
   var adjTimer = null;
   function onAdjustChange() {
     if (!cur) return;
     clearTimeout(adjTimer);
     adjTimer = setTimeout(function () {
-      var ps = { w: cur.preview.width, h: cur.preview.height };
       cur.previewAdjusted = C.isNeutral(state.settings.adjLive)
-        ? cur.preview : C.drawAdjusted(cur.img, ps.w, ps.h, state.settings.adjLive);
+        ? cur.preview
+        : C.drawAdjusted(cur.img, cur.preview.width, cur.preview.height, state.settings.adjLive);
       E.refreshSource(cur.previewAdjusted);
+      updateApplyState();
     }, 90);
   }
 
@@ -317,98 +396,99 @@
   }
 
   function bakeCurrent() {
-    if (!cur) { toast(T('msg.noImage')); return Promise.resolve(false); }
+    if (!cur) { toast(T('사진을 먼저 넣어 주세요')); return Promise.resolve(false); }
     var item = cur.item;
-    var pending = E.hasPending();
-    var adjusted = !C.isNeutral(state.settings.adjLive);
-    if (!pending && !adjusted) { toast(T('msg.nothingToApply')); return Promise.resolve(false); }
+    if (!E.hasPending() && C.isNeutral(state.settings.adjLive)) {
+      toast(T('적용할 것이 없습니다'));
+      return Promise.resolve(false);
+    }
 
     busy(true);
     var mult = item.width / E.previewW;
     var maskItems = E.maskItemsAt(mult);
     var annotURL = E.renderAnnotations(mult);
 
-    var p = annotURL ? C.loadImage(annotURL) : Promise.resolve(null);
-    return p.then(function (annotImg) {
-      var out = renderFullRes(cur.img, item.width, item.height,
-        state.settings.adjLive, maskItems, annotImg);
+    return (annotURL ? C.loadImage(annotURL) : Promise.resolve(null)).then(function (annotImg) {
+      var out = renderFullRes(cur.img, item.width, item.height, state.settings.adjLive, maskItems, annotImg);
       return C.canvasToBlob(out, 'image/png').then(function (blob) {
         commit(item, out, blob);
-        item.detRaw = [];      // 이미 가려졌으므로 재검출 불필요
+        item.detRaw = [];            // 이미 가렸으므로 다시 찾을 필요가 없다
         item.stash = null;
         state.settings.adjLive = { b: 100, c: 100, s: 100 };
         syncAdjustUI();
         return reloadCurrent().then(function () {
-          busy(false);
-          renderQueue();
-          toast(T('msg.applied'), 'ok');
+          busy(false); renderQueue(); toast(T('적용했습니다'));
           return true;
         });
       });
     }).catch(function (e) {
-      busy(false); console.error(e);
-      toast(String(e && e.message || e), 'err');
+      busy(false); console.error(e); toast(String(e && e.message || e));
       return false;
     });
   }
 
-  /* 현재 이미지를 blob 기준으로 다시 로드 (마스크/주석은 비운다) */
-  function reloadCurrent() {
-    if (!cur) return Promise.resolve();
-    var item = cur.item;
-    var i = state.items.indexOf(item);
+  /* 열려 있는 사진을 닫는다. 아직 적용하지 않은 것은 버린다.
+   * 굽기·일괄처리 뒤에는 item.blob 이 바뀌어 있어서 화면의 cur.img 가 낡은 것이 된다.
+   * 이때 selectItem 은 "같은 item" 이라고 판단해 그냥 돌아가 버리므로,
+   * 다시 열기 전에 반드시 여기를 먼저 지나야 한다. */
+  function dropCurrent() {
+    if (!cur) return;
+    cur.item.stash = null;
     C.releaseImage(cur.img);
     cur = null;
     E.clearAll();
     state.index = -1;
-    return selectItemForce(i);
   }
 
-  function selectItemForce(i) {
-    state.index = -1;
+  function reloadCurrent() {
+    if (!cur) return Promise.resolve();
+    var i = state.items.indexOf(cur.item);
+    dropCurrent();
     return selectItem(i);
   }
 
-  /* 미적용 변경이 있으면 먼저 굽는다 (내보내기/변환 직전) */
+
   function flushPending() {
     if (!cur) return Promise.resolve();
     if (!E.hasPending() && C.isNeutral(state.settings.adjLive)) return Promise.resolve();
-    toast(T('msg.pendingApply'));
+    toast(T('미적용분을 먼저 적용합니다'));
     return bakeCurrent().then(function () {});
   }
 
-  /* ── 일괄 처리 공통 ────────────────────────────────────── */
+  /* ── 한꺼번에 처리 ─────────────────────────────────────── */
   function forEachItem(fn, label) {
     var items = state.items.slice();
-    if (!items.length) { toast(T('msg.noImage')); return Promise.resolve({ ok: 0, total: 0 }); }
+    if (!items.length) { toast(T('사진을 먼저 넣어 주세요')); return Promise.resolve({ ok: 0, total: 0 }); }
+    var back = Math.max(0, state.index);
+    dropCurrent();                 // 처리 중에는 낡은 화면을 들고 있지 않는다
     var ok = 0, fail = 0;
     var chain = Promise.resolve();
     busy(true);
     items.forEach(function (it, i) {
       chain = chain.then(function () {
-        progress(i, items.length, label);
+        progress(i, items.length, label, it.origName);
         it.status = 'busy';
-        return Promise.resolve(fn(it, i)).then(function () {
-          ok++; it.status = 'done';
-        }, function (e) {
-          console.error(e); fail++; it.status = 'err';
-        });
+        return Promise.resolve(fn(it, i)).then(
+          function () { ok++; it.status = 'done'; },
+          function (e) { console.error(e); fail++; it.status = 'err'; }   // 한 장 실패해도 계속
+        );
       });
     });
     return chain.then(function () {
       progress(items.length, items.length, label);
-      setTimeout(function () { progress(null); }, 500);
+      setTimeout(function () { progress(null); }, 600);
       busy(false);
       renderQueue();
-      if (fail) toast(T('msg.batchFail', { n: fail }), 'err');
-      toast(T('msg.batchDone', { ok: ok, total: items.length }), 'ok');
-      return { ok: ok, total: items.length };
+      toast(fail ? TF('{ok}장 했습니다. {fail}장은 실패했습니다', { ok: ok, fail: fail })
+                 : TF('{ok}장 모두 했습니다', { ok: ok }));
+      return (state.items.length ? selectItem(Math.min(back, state.items.length - 1)) : Promise.resolve())
+        .then(function () { return { ok: ok, total: items.length }; });
     });
   }
 
-  /* 큐 전체 자동 가림 (헤드리스) */
   function batchAutoMask() {
     var def = currentDef();
+    if (def.type === 'image' && !def.customURL) { toast(T('쓸 이미지를 먼저 골라 주세요')); return Promise.resolve(); }
     return flushPending()
       .then(function () { return F.ensureAssets(def); })
       .then(function () {
@@ -422,66 +502,62 @@
               if (!boxes.length) return;
               var maskItems = boxes.map(function (b) {
                 var d = Object.assign({}, def);
-                d.cols = F.colsFor(b.w * ps.scale, d.block);
+                d.cols = F.clampCols(d.cols);
                 return {
                   rect: {
                     cx: b.cx, cy: b.cy, w: b.w, h: b.h,
                     angle: (d.type === 'icon' || d.type === 'image') ? b.angle : 0
-                  },
-                  def: d
+                  }, def: d
                 };
               });
               var out = renderFullRes(img, item.width, item.height, null, maskItems, null);
               return C.canvasToBlob(out, 'image/png').then(function (blob) {
                 commit(item, out, blob);
-                item.detRaw = [];
-                item.stash = null;
+                item.detRaw = []; item.stash = null;
               });
             });
           });
-        }, 'mask');
-      })
-      .then(function () {
-        var i = state.index >= 0 ? state.index : 0;
-        if (state.items.length) return selectItemForce(i);
+        }, T('얼굴 가리기'));
       });
   }
 
-  /* ── 변환(리사이즈/압축/포맷) ──────────────────────────── */
+  /* ── 크기·용량 ─────────────────────────────────────────── */
+  function flatten(canvas) {
+    var flat = C.makeCanvas(canvas.width, canvas.height);
+    var g = flat.getContext('2d');
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, flat.width, flat.height);
+    g.drawImage(canvas, 0, 0);
+    return flat;
+  }
+
   function convertItem(item) {
     var s = state.settings;
     return withImage(item, function (img) {
       var canvas = C.drawAdjusted(img, item.width, item.height, null);
       canvas = C.resizeCanvas(canvas, s.resizeLong);
-      if (s.format === 'image/jpeg') {
-        var flat = C.makeCanvas(canvas.width, canvas.height);
-        var g = flat.getContext('2d');
-        g.fillStyle = '#ffffff'; g.fillRect(0, 0, flat.width, flat.height);
-        g.drawImage(canvas, 0, 0);
-        canvas = flat;
-      }
+      if (s.format === 'image/jpeg') canvas = flatten(canvas);
       return C.encodeToTarget(canvas, s.format, s.quality / 100, s.targetKB)
         .then(function (blob) { commit(item, canvas, blob); });
     });
   }
 
-  /* ── 스탬프 (전체 일괄, 원본 해상도 직접 그리기) ─────────── */
+  /* ── 사진 아래 표기(스탬프) ────────────────────────────── */
   function stampText() {
     var st = state.settings.stamp;
-    var parts = [st.project, st.school, st.date].filter(function (v) { return v && String(v).trim(); });
-    return parts.join(' | ');
+    return [st.project, st.school, st.date]
+      .filter(function (v) { return v && String(v).trim(); }).join(' | ');
   }
 
   function drawStampOnCanvas(canvas, text) {
     var g = canvas.getContext('2d');
     var size = Math.max(12, Math.round(canvas.height * 0.032));
     var pad = Math.max(6, Math.round(canvas.width * 0.012));
-    g.font = '600 ' + size + 'px Pretendard, "Malgun Gothic", sans-serif';
+    g.font = '600 ' + size + 'px "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
     g.textBaseline = 'middle';
     var tw = g.measureText(text).width;
     var bw = tw + pad * 2, bh = size + pad * 1.4;
     var bx = canvas.width - pad - bw, by = canvas.height - pad - bh;
-    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.fillStyle = 'rgba(42,38,32,0.62)';
     if (g.roundRect) { g.beginPath(); g.roundRect(bx, by, bw, bh, 4); g.fill(); }
     else g.fillRect(bx, by, bw, bh);
     g.fillStyle = '#ffffff';
@@ -490,7 +566,7 @@
 
   function stampAll() {
     var text = stampText();
-    if (!text) { toast(T('msg.stampEmpty'), 'err'); return Promise.resolve(); }
+    if (!text) { toast(T('사업명·학교명·날짜 중 하나는 적어 주세요')); return Promise.resolve(); }
     return flushPending().then(function () {
       return forEachItem(function (item) {
         return withImage(item, function (img) {
@@ -498,9 +574,7 @@
           drawStampOnCanvas(out, text);
           return C.canvasToBlob(out, 'image/png').then(function (blob) { commit(item, out, blob); });
         });
-      }, 'stamp');
-    }).then(function () {
-      if (state.items.length) return selectItemForce(state.index >= 0 ? state.index : 0);
+      }, T('사진 아래 표기'));
     });
   }
 
@@ -509,15 +583,8 @@
     var s = state.settings;
     return withImage(item, function (img) {
       var canvas = C.drawAdjusted(img, item.width, item.height, null);
-      var r = C.resizeCanvas(canvas, s.resizeLong);
-      if (r !== canvas) canvas = r;
-      if (s.format === 'image/jpeg') {
-        var flat = C.makeCanvas(canvas.width, canvas.height);
-        var g = flat.getContext('2d');
-        g.fillStyle = '#ffffff'; g.fillRect(0, 0, flat.width, flat.height);
-        g.drawImage(canvas, 0, 0);
-        canvas = flat;
-      }
+      canvas = C.resizeCanvas(canvas, s.resizeLong);
+      if (s.format === 'image/jpeg') canvas = flatten(canvas);
       return canvas;
     });
   }
@@ -536,47 +603,6 @@
     });
   }
 
-  function downloadCurrent() {
-    var item = currentItem();
-    if (!item) { toast(T('msg.noImage')); return; }
-    flushPending().then(function () {
-      busy(true);
-      return exportBlob(currentItem(), state.index + 1).then(function (r) {
-        X.saveBlob(r.blob, r.name);
-        busy(false);
-      });
-    }).catch(function (e) { busy(false); toast(String(e), 'err'); });
-  }
-
-  function downloadZip() {
-    if (!state.items.length) { toast(T('msg.noImage')); return; }
-    flushPending().then(function () {
-      busy(true);
-      var files = [];
-      var chain = Promise.resolve();
-      var used = {};
-      state.items.forEach(function (it, i) {
-        chain = chain.then(function () {
-          progress(i, state.items.length, 'zip');
-          return exportBlob(it, i + 1).then(function (r) {
-            var nm = r.name;
-            if (used[nm]) { nm = nm.replace(/(\.[^.]+)$/, '_' + (++used[r.name]) + '$1'); }
-            else used[r.name] = 1;
-            files.push({ name: nm, blob: r.blob });
-          }).catch(function (e) { console.error(e); });
-        });
-      });
-      return chain.then(function () {
-        progress(state.items.length, state.items.length, 'zip');
-        return X.zip(files).then(function (blob) {
-          X.saveBlob(blob, 'snap-box_' + dateTag() + '.zip');
-          progress(null); busy(false);
-          toast(T('msg.zipDone', { n: files.length }), 'ok');
-        });
-      });
-    }).catch(function (e) { progress(null); busy(false); toast(String(e), 'err'); });
-  }
-
   function dateTag() {
     var d = new Date();
     return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
@@ -587,15 +613,52 @@
     return [st.project, st.school, st.date].filter(Boolean).join(' | ');
   }
 
+  function downloadCurrent() {
+    if (!currentItem()) { toast(T('사진을 먼저 넣어 주세요')); return; }
+    flushPending().then(function () {
+      busy(true);
+      return exportBlob(currentItem(), state.index + 1).then(function (r) {
+        X.saveBlob(r.blob, r.name); busy(false);
+      });
+    }).catch(function (e) { busy(false); toast(String(e)); });
+  }
+
+  function downloadZip() {
+    if (!state.items.length) { toast(T('사진을 먼저 넣어 주세요')); return; }
+    flushPending().then(function () {
+      busy(true);
+      var files = [], used = {};
+      var chain = Promise.resolve();
+      state.items.forEach(function (it, i) {
+        chain = chain.then(function () {
+          progress(i, state.items.length, 'ZIP', it.origName);
+          return exportBlob(it, i + 1).then(function (r) {
+            var nm = r.name;
+            if (used[r.name]) nm = nm.replace(/(\.[^.]+)$/, '_' + (++used[r.name]) + '$1');
+            else used[r.name] = 1;
+            files.push({ name: nm, blob: r.blob });
+          }).catch(function (e) { console.error(e); });
+        });
+      });
+      return chain.then(function () {
+        progress(state.items.length, state.items.length, 'ZIP');
+        return X.zip(files).then(function (blob) {
+          X.saveBlob(blob, 'snap-box_' + dateTag() + '.zip');
+          progress(null); busy(false);
+          toast(TF('{n}장을 ZIP으로 저장했습니다', { n: files.length }));
+        });
+      });
+    }).catch(function (e) { progress(null); busy(false); toast(String(e)); });
+  }
+
   function collectForPdf(maxPx) {
     var out = [];
     var chain = Promise.resolve();
     state.items.forEach(function (it, i) {
       chain = chain.then(function () {
-        progress(i, state.items.length, 'pdf');
+        progress(i, state.items.length, 'PDF', it.origName);
         return withImage(it, function (img) {
-          var cv = C.drawAdjusted(img, it.width, it.height, null);
-          cv = C.resizeCanvas(cv, maxPx);
+          var cv = C.resizeCanvas(C.drawAdjusted(img, it.width, it.height, null), maxPx);
           out.push({
             canvas: cv,
             caption: X.buildName(state.settings.nameTemplate, nameVars(it, i + 1), state.settings.format)
@@ -607,32 +670,31 @@
   }
 
   function makeContactSheet() {
-    if (!state.items.length) { toast(T('msg.noImage')); return; }
+    if (!state.items.length) { toast(T('사진을 먼저 넣어 주세요')); return; }
     flushPending().then(function () {
       busy(true);
       return collectForPdf(1000).then(function (items) {
-        var pdf = X.contactSheet(items, state.settings.sheetLayout, headerLine());
-        pdf.save('snap-box_sheet_' + dateTag() + '.pdf');
-        busy(false); toast(T('msg.pdfDone'), 'ok');
+        X.contactSheet(items, state.settings.sheetLayout, headerLine())
+          .save('snap-box_대지_' + dateTag() + '.pdf');
+        busy(false); toast(T('PDF를 저장했습니다'));
       });
-    }).catch(function (e) { busy(false); toast(String(e), 'err'); });
+    }).catch(function (e) { busy(false); toast(String(e)); });
   }
 
   function makePhotoPdf() {
-    if (!state.items.length) { toast(T('msg.noImage')); return; }
+    if (!state.items.length) { toast(T('사진을 먼저 넣어 주세요')); return; }
     flushPending().then(function () {
       busy(true);
       return collectForPdf(1800).then(function (items) {
-        var pdf = X.photoPdf(items, headerLine());
-        pdf.save('snap-box_photos_' + dateTag() + '.pdf');
-        busy(false); toast(T('msg.pdfDone'), 'ok');
+        X.photoPdf(items, headerLine()).save('snap-box_사진_' + dateTag() + '.pdf');
+        busy(false); toast(T('PDF를 저장했습니다'));
       });
-    }).catch(function (e) { busy(false); toast(String(e), 'err'); });
+    }).catch(function (e) { busy(false); toast(String(e)); });
   }
 
   function mergeChecked() {
     var sel = state.items.filter(function (i) { return i.checked; });
-    if (sel.length !== 2) { toast(T('msg.needTwo'), 'err'); return; }
+    if (sel.length !== 2) { toast(T('두 장만 골라 주세요')); return; }
     flushPending().then(function () {
       busy(true);
       return withImage(sel[0], function (a) {
@@ -641,7 +703,7 @@
           var cb = C.drawAdjusted(b, sel[1].width, sel[1].height, null);
           var out = X.mergeSideBySide(ca, cb, Math.round(Math.max(ca.width, cb.width) * 0.02), '#ffffff');
           return C.canvasToBlob(out, 'image/png').then(function (blob) {
-            var item = {
+            state.items.push({
               id: 'i' + (++state.seq),
               origName: sel[0].origName + '_' + sel[1].origName,
               blob: blob, origBlob: blob,
@@ -650,27 +712,22 @@
               status: 'done', detRaw: [], detTried: true,
               adjust: { b: 100, c: 100, s: 100 },
               history: [], stash: null, checked: false
-            };
-            state.items.push(item);
-            renderQueue();
-            busy(false);
-            toast(T('msg.merged'), 'ok');
+            });
+            renderQueue(); busy(false); toast(T('붙인 사진을 목록에 넣었습니다'));
           });
         });
       });
-    }).catch(function (e) { busy(false); toast(String(e), 'err'); });
+    }).catch(function (e) { busy(false); toast(String(e)); });
   }
 
-  /* ── 편집: 기하 변환 ───────────────────────────────────── */
+  /* ── 돌리기 · 뒤집기 · 자르기 ──────────────────────────── */
   function geomOp(op) {
-    var item = currentItem();
-    if (!item) { toast(T('msg.noImage')); return; }
+    if (!currentItem()) { toast(T('사진을 먼저 넣어 주세요')); return; }
     flushPending().then(function () {
       busy(true);
       var it = currentItem();
       return withImage(it, function (img) {
-        var src = C.drawAdjusted(img, it.width, it.height, null);
-        var out = op(src);
+        var out = op(C.drawAdjusted(img, it.width, it.height, null));
         if (!out) { busy(false); return; }
         return C.canvasToBlob(out, 'image/png').then(function (blob) {
           commit(it, out, blob);
@@ -678,7 +735,7 @@
           return reloadCurrent().then(function () { busy(false); renderQueue(); });
         });
       });
-    }).catch(function (e) { busy(false); console.error(e); toast(String(e), 'err'); });
+    }).catch(function (e) { busy(false); console.error(e); toast(String(e)); });
   }
 
   function setCropUI(on) {
@@ -695,69 +752,106 @@
     var y = Math.max(0, Math.round(r.y * mult));
     var w = Math.min(cur.item.width - x, Math.round(r.w * mult));
     var h = Math.min(cur.item.height - y, Math.round(r.h * mult));
-    E.cancelCrop();
-    setCropUI(false);
-    if (w < 16 || h < 16) { toast(T('msg.cropTooSmall'), 'err'); return; }
+    E.cancelCrop(); setCropUI(false);
+    if (w < 16 || h < 16) { toast(T('자를 곳이 너무 작습니다')); return; }
     geomOp(function (src) { return C.cropCanvas(src, x, y, w, h); });
   }
 
-  /* ── 되돌리기 / 원본 복구 ──────────────────────────────── */
+  /* ── 되돌리기 · 원본으로 ───────────────────────────────── */
   function undo() {
     var item = currentItem();
-    if (!item) { toast(T('msg.noImage')); return; }
-    if (E.hasPending()) {  // 아직 굽지 않은 변경이 있으면 그것부터 취소
+    if (!item) { toast(T('사진을 먼저 넣어 주세요')); return; }
+    if (E.hasPending()) {
       E.clearMasks();
       E.annots().forEach(function (o) { E.canvas.remove(o); });
       E.canvas.requestRenderAll();
+      state.settings.adjLive = { b: 100, c: 100, s: 100 };
+      syncAdjustUI(); onAdjustChange();
       updateDetectLabel();
-      toast(T('msg.undone'), 'ok');
+      toast(T('아직 적용하지 않은 것을 지웠습니다'));
       return;
     }
-    if (!item.history.length) { toast(T('msg.noUndo')); return; }
+    if (!item.history.length) { toast(T('더 되돌릴 것이 없습니다')); return; }
     busy(true);
     item.blob = item.history.pop();
-    C.loadImageFromBlob(item.blob).then(function (img) {
-      item.width = img.naturalWidth; item.height = img.naturalHeight;
-      item.thumb = C.thumbDataURL(img);
-      C.releaseImage(img);
-      item.detRaw = null; item.detTried = false;
-      return reloadCurrent();
-    }).then(function () { busy(false); renderQueue(); toast(T('msg.undone'), 'ok'); })
-      .catch(function (e) { busy(false); toast(String(e), 'err'); });
+    reloadFromBlob(item).then(function () { busy(false); toast(T('되돌렸습니다')); })
+      .catch(function (e) { busy(false); toast(String(e)); });
   }
 
   function revertOriginal() {
     var item = currentItem();
-    if (!item) { toast(T('msg.noImage')); return; }
+    if (!item) { toast(T('사진을 먼저 넣어 주세요')); return; }
+    if (!confirm(T('이 사진을 처음 넣었을 때로 되돌릴까요?'))) return;
     busy(true);
     item.history.push(item.blob);
     item.blob = item.origBlob;
-    C.loadImageFromBlob(item.blob).then(function (img) {
+    item.status = 'wait';
+    reloadFromBlob(item).then(function () { busy(false); toast(T('원본으로 되돌렸습니다')); })
+      .catch(function (e) { busy(false); toast(String(e)); });
+  }
+
+  function reloadFromBlob(item) {
+    return C.loadImageFromBlob(item.blob).then(function (img) {
       item.width = img.naturalWidth; item.height = img.naturalHeight;
       item.thumb = C.thumbDataURL(img);
       C.releaseImage(img);
-      item.detRaw = null; item.detTried = false;
-      item.status = 'wait';
+      item.detRaw = null; item.detTried = false; item.stash = null;
       return reloadCurrent();
-    }).then(function () { busy(false); renderQueue(); toast(T('msg.reverted'), 'ok'); })
-      .catch(function (e) { busy(false); toast(String(e), 'err'); });
+    }).then(function () { renderQueue(); });
   }
 
-  /* ── UI 바인딩 ─────────────────────────────────────────── */
-  function bindSeg(sel, onPick) {
-    $$(sel + ' .seg-b').forEach(function (b) {
+  /* ── 단계(도구) 이동 ───────────────────────────────────── */
+  function goStep(name) {
+    if (STEPS.indexOf(name) < 0) return;
+    if (state.step !== name) { E.cancelCrop(); setCropUI(false); }
+    state.step = name;
+    var at = STEPS.indexOf(name);
+    $$('#steps .stp').forEach(function (b, i) {
+      b.classList.toggle('on', i === at);
+      b.classList.toggle('done', i < at);
+    });
+    STEPS.forEach(function (s) { $('#tool-' + s).hidden = (s !== name); });
+    $('#toolTitle').textContent = T(STEP_META[name].title);
+    $('#toolIcon').className = 'fa-solid ' + STEP_META[name].icon;
+    E.setDrawMode(name === 'face' && $('#btnDrawBox').classList.contains('on'));
+    $('#stageWrap').classList.toggle('drawing', E.getDrawMode());
+    if (name === 'out') updateOutSummary();
+  }
+
+  /* 내보내기 단계에서 지금 설정을 한눈에 보여 준다 */
+  function updateOutSummary() {
+    var s = state.settings;
+    var box = $('#outSummary');
+    if (!box) return;
+    var rows = [
+      [T('저장 형식'), s.format === 'image/png' ? 'PNG' : 'JPG ' + s.quality],
+      [T('긴 변'), s.resizeLong ? s.resizeLong + ' px' : T('원래대로')],
+      [T('목표 용량'), s.targetKB ? s.targetKB + ' KB' : T('쓰지 않음')],
+      [T('파일 이름'), X.buildName(s.nameTemplate, nameVars(
+        currentItem() || { origName: 'IMG_0001' }, Math.max(1, state.index + 1)), s.format)]
+    ];
+    box.innerHTML = '';
+    rows.forEach(function (r) {
+      var d = document.createElement('div');
+      d.className = 'srow';
+      var k = document.createElement('span'); k.className = 'sk'; k.textContent = r[0];
+      var v = document.createElement('span'); v.className = 'sv mono'; v.textContent = r[1];
+      d.appendChild(k); d.appendChild(v); box.appendChild(d);
+    });
+  }
+
+  /* ── 작은 UI 도우미 ────────────────────────────────────── */
+  function bindPick(sel, onPick) {
+    $$(sel + ' .db').forEach(function (b) {
       b.addEventListener('click', function () {
-        $$(sel + ' .seg-b').forEach(function (x) { x.classList.remove('active'); });
-        b.classList.add('active');
+        $$(sel + ' .db').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
         onPick(b.dataset.v);
       });
     });
   }
-
-  function setSegActive(sel, v) {
-    $$(sel + ' .seg-b').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.v === v);
-    });
+  function setPick(sel, v) {
+    $$(sel + ' .db').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
   }
 
   function syncAdjustUI() {
@@ -768,9 +862,7 @@
   }
 
   function showMaskOptions() {
-    $$('.opt[data-for]').forEach(function (el) {
-      el.hidden = el.dataset.for !== state.settings.maskType;
-    });
+    $$('.opt[data-for]').forEach(function (el) { el.hidden = el.dataset.for !== state.settings.maskType; });
   }
 
   function buildIconPicker() {
@@ -779,10 +871,9 @@
     SnapLab.ICONS.forEach(function (ic) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = ic.id === state.settings.iconId ? 'active' : '';
-      b.title = ic.id;
+      b.className = ic.id === state.settings.iconId ? 'on' : '';
       var im = document.createElement('img');
-      im.src = ic.url; im.alt = ic.id;
+      im.src = ic.url; im.alt = '';
       b.appendChild(im);
       b.addEventListener('click', function () {
         state.settings.iconId = ic.id;
@@ -796,108 +887,97 @@
 
   function applyDefToSelected() {
     var sel = E.selectedMasks();
-    if (!sel.length) { toast(T('msg.noSel'), 'err'); return; }
+    if (!sel.length) { toast(T('고른 칸이 없습니다')); return; }
     var def = currentDef();
-    if (def.type === 'image' && !def.customURL) { toast(T('msg.noCustom'), 'err'); return; }
+    if (def.type === 'image' && !def.customURL) { toast(T('쓸 이미지를 먼저 골라 주세요')); return; }
     F.ensureAssets(def).then(function () { E.setDefOn(sel, def); });
   }
 
   function applyDefToAllBoxes() {
     var all = E.masks();
-    if (!all.length) { toast(T('msg.noBox')); return; }
+    if (!all.length) { toast(T('칸이 없습니다')); return; }
     var def = currentDef();
-    if (def.type === 'image' && !def.customURL) { toast(T('msg.noCustom'), 'err'); return; }
+    if (def.type === 'image' && !def.customURL) { toast(T('쓸 이미지를 먼저 골라 주세요')); return; }
     F.ensureAssets(def).then(function () { E.setDefOn(all, def); });
   }
 
   function updateNamePreview() {
-    var it = state.items[0];
-    var vars = it ? nameVars(it, 1) : { school: '학교명', project: '사업명', date: state.settings.stamp.date, n: 1, orig: 'IMG_0001' };
+    var it = state.items[state.index >= 0 ? state.index : 0];
+    var vars = it ? nameVars(it, (state.index >= 0 ? state.index : 0) + 1)
+                  : { school: state.settings.stamp.school, project: state.settings.stamp.project,
+                      date: state.settings.stamp.date, n: 1, orig: 'IMG_0001' };
     $('#namePreview').textContent = X.buildName(state.settings.nameTemplate, vars, state.settings.format);
+    var sp = $('#stampPreview');
+    if (sp) sp.textContent = stampText() || '—';
   }
 
+  /* ── 이벤트 연결 ───────────────────────────────────────── */
   function bindUI() {
-    /* 탭 */
-    $$('#tabs .tab').forEach(function (t) {
-      t.addEventListener('click', function () {
-        $$('#tabs .tab').forEach(function (x) { x.classList.remove('active'); });
-        t.classList.add('active');
-        $$('.tabbody').forEach(function (b) { b.hidden = b.id !== 'tab-' + t.dataset.tab; });
-        E.setDrawMode(t.dataset.tab === 'face' && $('#btnDrawBox').classList.contains('on'));
-      });
+    $$('#steps .stp').forEach(function (b) {
+      b.addEventListener('click', function () { goStep(b.dataset.step); });
     });
 
-    /* 파일 입력 + 드래그앤드롭 */
-    $('#btnPick').addEventListener('click', function () { $('#fileInput').click(); });
-    $('#fileInput').addEventListener('change', function (e) {
-      addFiles(e.target.files); e.target.value = '';
-    });
     var dz = $('#dropZone');
+    dz.addEventListener('click', function (e) { if (e.target.tagName !== 'INPUT') $('#fileInput').click(); });
+    $('#fileInput').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
     ['dragenter', 'dragover'].forEach(function (ev) {
-      document.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('hot'); });
+      document.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.add('over'); });
     });
-    ['dragleave', 'drop'].forEach(function (ev) {
-      document.addEventListener(ev, function (e) {
-        e.preventDefault();
-        if (ev === 'drop' || e.target === document.documentElement) dz.classList.remove('hot');
-      });
+    document.addEventListener('dragleave', function (e) {
+      if (e.target === document.documentElement) dz.classList.remove('over');
     });
     document.addEventListener('drop', function (e) {
-      e.preventDefault();
+      e.preventDefault(); dz.classList.remove('over');
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
 
     $('#btnClearQueue').addEventListener('click', function () {
+      if (state.items.length && !confirm(T('사진을 모두 뺄까요? 되돌릴 수 없습니다.'))) return;
       releaseCurrent(); E.clearAll();
       state.items = []; state.index = -1;
       $('#stageEmpty').hidden = false;
-      $('#stageName').textContent = T('stage.empty');
-      $('#stageDims').textContent = ''; $('#detectState').textContent = '';
-      renderQueue();
+      $('#stageName').textContent = T('미리보기');
+      $('#stageDims').textContent = '';
+      renderQueue(); updateDetectLabel();
     });
     $('#btnRemoveSel').addEventListener('click', function () {
-      var curItem = currentItem();
+      var n = state.items.filter(function (i) { return i.checked; }).length;
+      if (!n) { toast(T('뺄 사진을 체크해 주세요')); return; }
+      if (!confirm(TF('체크한 {n}장을 뺄까요?', { n: n }))) return;
+      var keep = currentItem();
       state.items = state.items.filter(function (i) { return !i.checked; });
-      if (state.items.indexOf(curItem) < 0) {
+      if (state.items.indexOf(keep) < 0) {
         releaseCurrent(); E.clearAll(); state.index = -1;
         $('#stageEmpty').hidden = state.items.length > 0;
-        if (state.items.length) selectItem(0); else renderQueue();
-      } else {
-        state.index = state.items.indexOf(curItem);
-        renderQueue();
-      }
+        if (state.items.length) selectItem(0); else { renderQueue(); updateDetectLabel(); }
+      } else { state.index = state.items.indexOf(keep); renderQueue(); }
     });
 
-    /* 얼굴 탭 */
+    /* 1. 얼굴 가리기 */
     $('#confSlider').addEventListener('input', function (e) {
       state.settings.conf = e.target.value / 100;
       $('#confOut').value = state.settings.conf.toFixed(2);
     });
-    $('#confSlider').addEventListener('change', function () {
-      saveSettings(); rebuildDetectionMasks();
-    });
+    $('#confSlider').addEventListener('change', function () { saveSettings(); rebuildDetectionMasks(); });
     $('#btnRedetect').addEventListener('click', function () { autoDetect(true); });
     $('#btnDrawBox').addEventListener('click', function () {
       var on = !$('#btnDrawBox').classList.contains('on');
       $('#btnDrawBox').classList.toggle('on', on);
       E.setDrawMode(on);
+      $('#stageWrap').classList.toggle('drawing', on);
     });
-    bindSeg('#maskType', function (v) {
-      state.settings.maskType = v; saveSettings(); showMaskOptions();
+    bindPick('#maskType', function (v) { state.settings.maskType = v; saveSettings(); showMaskOptions(); });
+    $('#pixelCols').addEventListener('input', function (e) {
+      state.settings.cols = +e.target.value; $('#pixelColsOut').value = e.target.value;
     });
-    $('#pixelBlock').addEventListener('input', function (e) {
-      state.settings.block = +e.target.value; $('#pixelBlockOut').value = e.target.value;
-    });
-    $('#pixelBlock').addEventListener('change', function () {
-      saveSettings();
-      if (state.settings.maskType === 'pixelate') applyDefToAllBoxes();
+    $('#pixelCols').addEventListener('change', function () {
+      saveSettings(); if (state.settings.maskType === 'pixelate') applyDefToAllBoxes();
     });
     $('#blurStrength').addEventListener('input', function (e) {
       state.settings.blurPct = +e.target.value; $('#blurStrengthOut').value = e.target.value;
     });
     $('#blurStrength').addEventListener('change', function () {
-      saveSettings();
-      if (state.settings.maskType === 'blur') applyDefToAllBoxes();
+      saveSettings(); if (state.settings.maskType === 'blur') applyDefToAllBoxes();
     });
     $('#customMaskFile').addEventListener('change', function (e) {
       var f = e.target.files && e.target.files[0];
@@ -906,7 +986,10 @@
       fr.onload = function () {
         state.settings.customURL = fr.result;
         F.customImage(fr.result).then(function () {
-          $('#customMaskPrev').innerHTML = '<img src="' + fr.result + '" alt="">';
+          var box = $('#customMaskPrev');
+          box.innerHTML = '';
+          var im = document.createElement('img'); im.src = fr.result; im.alt = '';
+          box.appendChild(im);
           if (state.settings.maskType === 'image') applyDefToAllBoxes();
         });
       };
@@ -915,16 +998,16 @@
     $('#btnApplyToSelected').addEventListener('click', applyDefToSelected);
     $('#btnApplyToAll').addEventListener('click', applyDefToAllBoxes);
     $('#btnDelBox').addEventListener('click', function () {
-      if (!E.deleteSelected()) toast(T('msg.noSel'));
+      if (!E.deleteSelected()) toast(T('고른 칸이 없습니다'));
       updateDetectLabel();
     });
     $('#btnClearBoxes').addEventListener('click', function () { E.clearMasks(); updateDetectLabel(); });
 
-    /* 편집 탭 */
+    /* 2. 다듬기 */
     $('#btnRotate').addEventListener('click', function () { geomOp(C.rotate90); });
     $('#btnFlip').addEventListener('click', function () { geomOp(C.flipH); });
     $('#btnCropStart').addEventListener('click', function () {
-      if (!cur) { toast(T('msg.noImage')); return; }
+      if (!cur) { toast(T('사진을 먼저 넣어 주세요')); return; }
       E.startCrop(); setCropUI(true);
     });
     $('#btnCropApply').addEventListener('click', applyCrop);
@@ -943,27 +1026,34 @@
     });
 
     function annotStyle() {
-      return {
-        color: $('#annotColor').value,
-        width: +$('#annotWidth').value,
-        size: +$('#annotSize').value
-      };
+      var s = state.settings.annot;
+      s.color = $('#annotColor').value;
+      s.width = +$('#annotWidth').value;
+      s.size = +$('#annotSize').value;
+      saveSettings();
+      return s;
     }
     $('#btnAddText').addEventListener('click', function () {
-      if (!cur) { toast(T('msg.noImage')); return; }
-      E.addText('내용', annotStyle());
+      if (!cur) { toast(T('사진을 먼저 넣어 주세요')); return; }
+      E.addText(T('내용'), annotStyle());
     });
     $('#btnAddRect').addEventListener('click', function () {
-      if (!cur) { toast(T('msg.noImage')); return; }
+      if (!cur) { toast(T('사진을 먼저 넣어 주세요')); return; }
       E.addRect(annotStyle());
     });
     $('#btnAddArrow').addEventListener('click', function () {
-      if (!cur) { toast(T('msg.noImage')); return; }
+      if (!cur) { toast(T('사진을 먼저 넣어 주세요')); return; }
       E.addArrow(annotStyle());
+    });
+    $$('.filebtn[data-needs-photo]').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        if (el.classList.contains('off')) { e.preventDefault(); toast(T('사진을 먼저 넣어 주세요')); }
+      });
     });
     $('#logoFile').addEventListener('change', function (e) {
       var f = e.target.files && e.target.files[0];
-      if (!f || !cur) return;
+      if (!f) return;
+      if (!cur) { toast(T('사진을 먼저 넣어 주세요')); e.target.value = ''; return; }
       var fr = new FileReader();
       fr.onload = function () { C.loadImage(fr.result).then(function (img) { E.addImageObject(img); }); };
       fr.readAsDataURL(f);
@@ -972,80 +1062,72 @@
 
     ['stampProject', 'stampSchool', 'stampDate'].forEach(function (id) {
       $('#' + id).addEventListener('input', function (e) {
-        var k = id.replace('stamp', '').toLowerCase();
-        state.settings.stamp[k] = e.target.value;
+        state.settings.stamp[id.replace('stamp', '').toLowerCase()] = e.target.value;
         saveSettings(); updateNamePreview();
       });
     });
     $('#btnAddStamp').addEventListener('click', function () {
-      if (!cur) { toast(T('msg.noImage')); return; }
+      if (!cur) { toast(T('사진을 먼저 넣어 주세요')); return; }
       var t = stampText();
-      if (!t) { toast(T('msg.stampEmpty'), 'err'); return; }
+      if (!t) { toast(T('사업명·학교명·날짜 중 하나는 적어 주세요')); return; }
       E.addStamp(t);
     });
     $('#btnStampAll').addEventListener('click', stampAll);
 
-    /* 변환 탭 */
+    /* 3. 크기·용량 */
     $('#resizeLong').addEventListener('change', function (e) {
-      state.settings.resizeLong = Math.max(0, +e.target.value || 0); saveSettings();
+      state.settings.resizeLong = Math.max(0, +e.target.value || 0); saveSettings(); updateOutSummary();
     });
     $('#targetKB').addEventListener('change', function (e) {
-      state.settings.targetKB = Math.max(0, +e.target.value || 0); saveSettings();
+      state.settings.targetKB = Math.max(0, +e.target.value || 0); saveSettings(); updateOutSummary();
     });
-    bindSeg('#outFormat', function (v) {
-      state.settings.format = v; saveSettings(); updateNamePreview();
+    bindPick('#outFormat', function (v) {
+      state.settings.format = v; saveSettings(); updateNamePreview(); updateOutSummary();
     });
     $('#outQuality').addEventListener('input', function (e) {
       state.settings.quality = +e.target.value; $('#outQualityOut').value = e.target.value;
     });
-    $('#outQuality').addEventListener('change', saveSettings);
+    $('#outQuality').addEventListener('change', function () { saveSettings(); updateOutSummary(); });
     $('#nameTemplate').addEventListener('input', function (e) {
-      state.settings.nameTemplate = e.target.value; saveSettings(); updateNamePreview();
+      state.settings.nameTemplate = e.target.value; saveSettings(); updateNamePreview(); updateOutSummary();
     });
     $('#btnConvertCurrent').addEventListener('click', function () {
-      var it = currentItem();
-      if (!it) { toast(T('msg.noImage')); return; }
-      flushPending().then(function () {
-        busy(true);
-        return convertItem(currentItem());
-      }).then(function () {
-        return reloadCurrent();
-      }).then(function () { busy(false); renderQueue(); toast(T('msg.applied'), 'ok'); })
-        .catch(function (e) { busy(false); toast(String(e), 'err'); });
+      if (!currentItem()) { toast(T('사진을 먼저 넣어 주세요')); return; }
+      flushPending()
+        .then(function () { busy(true); return convertItem(currentItem()); })
+        .then(function () { return reloadCurrent(); })
+        .then(function () { busy(false); renderQueue(); toast(T('적용했습니다')); })
+        .catch(function (e) { busy(false); toast(String(e)); });
     });
     $('#btnConvertAll').addEventListener('click', function () {
       flushPending()
-        .then(function () { return forEachItem(convertItem, 'convert'); })
-        .then(function () { if (state.items.length) return selectItemForce(Math.max(0, state.index)); });
+        .then(function () { return forEachItem(convertItem, T('크기·용량')); });
     });
 
-    /* 내보내기 탭 */
+    /* 4. 내보내기 */
     $('#btnDownloadCurrent').addEventListener('click', downloadCurrent);
     $('#btnDownloadZip').addEventListener('click', downloadZip);
-    bindSeg('#sheetLayout', function (v) { state.settings.sheetLayout = v; saveSettings(); });
+    bindPick('#sheetLayout', function (v) { state.settings.sheetLayout = v; saveSettings(); });
     $('#btnContactSheet').addEventListener('click', makeContactSheet);
     $('#btnPhotoPdf').addEventListener('click', makePhotoPdf);
     $('#btnMerge').addEventListener('click', mergeChecked);
 
-    /* 하단 바 */
+    /* 아래 작업 줄 */
     $('#btnPrev').addEventListener('click', function () { if (state.index > 0) selectItem(state.index - 1); });
-    $('#btnNext').addEventListener('click', function () { if (state.index < state.items.length - 1) selectItem(state.index + 1); });
+    $('#btnNext').addEventListener('click', function () {
+      if (state.index < state.items.length - 1) selectItem(state.index + 1);
+    });
     $('#btnApply').addEventListener('click', bakeCurrent);
     $('#btnUndo').addEventListener('click', undo);
     $('#btnRevert').addEventListener('click', revertOriginal);
     $('#btnBatchAll').addEventListener('click', batchAutoMask);
 
-    /* 개인정보 안내 */
-    $('#privacyClose').addEventListener('click', function () {
-      $('#privacyNote').hidden = true;
-      try { localStorage.setItem('snapbox.noticeSeen', '1'); } catch (e) {}
-    });
-
     /* 키보드 */
     document.addEventListener('keydown', function (e) {
       var tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-      if (E.canvas && E.canvas.getActiveObject() && E.canvas.getActiveObject().isEditing) return;
+      var act = E.canvas && E.canvas.getActiveObject();
+      if (act && act.isEditing) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (E.deleteSelected()) { e.preventDefault(); updateDetectLabel(); }
       } else if (e.key === 'ArrowLeft') {
@@ -1064,8 +1146,8 @@
     var s = state.settings;
     $('#confSlider').value = Math.round(s.conf * 100);
     $('#confOut').value = s.conf.toFixed(2);
-    setSegActive('#maskType', s.maskType);
-    $('#pixelBlock').value = s.block; $('#pixelBlockOut').value = s.block;
+    setPick('#maskType', s.maskType);
+    $('#pixelCols').value = s.cols; $('#pixelColsOut').value = s.cols;
     $('#blurStrength').value = s.blurPct; $('#blurStrengthOut').value = s.blurPct;
     $('#annotColor').value = s.annot.color;
     $('#annotWidth').value = s.annot.width;
@@ -1076,10 +1158,10 @@
     s.stamp.date = $('#stampDate').value;
     $('#resizeLong').value = s.resizeLong;
     $('#targetKB').value = s.targetKB;
-    setSegActive('#outFormat', s.format);
+    setPick('#outFormat', s.format);
     $('#outQuality').value = s.quality; $('#outQualityOut').value = s.quality;
     $('#nameTemplate').value = s.nameTemplate;
-    setSegActive('#sheetLayout', s.sheetLayout);
+    setPick('#sheetLayout', s.sheetLayout);
     showMaskOptions();
     syncAdjustUI();
     updateNamePreview();
@@ -1087,20 +1169,20 @@
 
   /* ── 시작 ──────────────────────────────────────────────── */
   function boot() {
-    SnapLab.i18n.apply(document);
     loadSettings();
     E.init($('#c'), $('#stageWrap'), function () { updateDetectLabel(); });
     E.setDefProvider(currentDef);
-    E.setDrawMode(true);
     buildIconPicker();
     bindUI();
     syncUIFromSettings();
+    goStep('face');
+    renderQueue();
+    updateDetectLabel();
     F.preloadIcons();
-    $('#stageName').textContent = T('stage.empty');
-    try {
-      if (localStorage.getItem('snapbox.noticeSeen')) { /* 계속 표시해도 무해하므로 유지 */ }
-    } catch (e) {}
-    SnapLab.state = state;   // 디버그용
+    // 얼굴 찾기 모듈을 미리 데워 둔다. 실패해도 나머지 기능은 그대로 쓴다.
+    F.warmUp().then(function () { setEngine('준비 완료', true); },
+                    function () { setEngine('얼굴 찾기 못 씀', false); });
+    SnapLab.state = state;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

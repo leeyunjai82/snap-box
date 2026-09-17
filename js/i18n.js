@@ -1,233 +1,272 @@
-/* i18n.js — 모든 UI 문자열은 여기 한 곳에만 둔다. (영어 추가 대비) */
+// ═══════════════════════════════════════════════════════════
+// 다국어 (한국어 / English) — sense-lab lib/i18n.js 와 같은 방식
+// ═══════════════════════════════════════════════════════════
+// 설계 (sense-lab · 파이보 랩과 동일)
+//  · 한국어 원문을 그대로 '키' 로 쓴다 → 사전에 없으면 한국어가 그대로 나오므로
+//    번역이 빠져도 화면이 깨지지 않는다.
+//  · HTML 은 손대지 않는다. 페이지가 뜨면 DOM 을 훑어서 텍스트를 바꾼다.
+//  · 언어 설정은 같은 localStorage 키 'language' 를 쓴다.
+//  · 사용자가 적은 사업명·학교명·파일 이름은 사전에 없으므로 번역되지 않는다 (의도된 동작).
+//
+// 주의: 번역할 문장 안에 <span> 같은 인라인 요소를 넣지 말 것.
+//       텍스트 노드가 쪼개져 사전 키와 맞지 않는다.
+
 window.SnapLab = window.SnapLab || {};
 
-(function () {
-  'use strict';
-
-  var ko = {
-    'app.tagline': '브라우저 안에서 끝내는 보고서용 사진 처리',
-    'app.privacy': '사진은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.',
-
-    'queue.title': '파일 큐',
-    'queue.drop': '여기로 사진을 끌어다 놓으세요',
-    'queue.pick': '파일 선택',
-    'queue.clear': '큐 비우기',
-    'queue.removeSel': '선택 삭제',
-
-    'stage.empty': '이미지 없음',
-    'stage.hint': '왼쪽에서 사진을 추가하면 여기에 표시됩니다.',
-
-    'tab.face': '얼굴',
-    'tab.edit': '편집',
-    'tab.conv': '변환',
-    'tab.out': '내보내기',
-
-    'face.detect': '얼굴 검출',
-    'face.conf': '신뢰도',
-    'face.redetect': '다시 검출',
-    'face.drawbox': '박스 그리기',
-    'face.hint': '빈 곳을 드래그하면 수동 박스가 추가됩니다. 검출 박스는 상하좌우 15% 확장됩니다.',
-    'face.mode': '가림 모드',
-    'face.pixelate': '픽셀화',
-    'face.blur': '블러',
-    'face.icon': '아이콘',
-    'face.image': '이미지',
-    'face.block': '블록',
-    'face.blurAmt': '강도',
-    'face.toSelected': '선택 박스에 적용',
-    'face.toAll': '모든 박스에 적용',
-    'face.boxes': '박스',
-    'face.delBox': '선택 삭제',
-    'face.clearBoxes': '전체 삭제',
-    'face.delHint': '박스를 고른 뒤 Delete 키로도 지울 수 있습니다.',
-
-    'edit.geom': '자르기 · 회전',
-    'edit.rotate': '회전 90°',
-    'edit.flip': '좌우반전',
-    'edit.cropStart': '자르기',
-    'edit.cropApply': '자르기 확정',
-    'edit.cropCancel': '취소',
-    'edit.adjust': '색 보정',
-    'edit.bright': '밝기',
-    'edit.contrast': '대비',
-    'edit.sat': '채도',
-    'edit.reset': '초기화',
-    'edit.annot': '주석',
-    'edit.text': '텍스트',
-    'edit.rect': '사각형',
-    'edit.arrow': '화살표',
-    'edit.color': '색',
-    'edit.width': '굵기',
-    'edit.size': '크기',
-    'edit.logo': '로고',
-    'edit.stamp': '스탬프',
-    'edit.project': '사업명',
-    'edit.school': '학교명',
-    'edit.date': '날짜',
-    'edit.addStamp': '현재 사진에 추가',
-    'edit.stampAll': '큐 전체 일괄',
-    'edit.stampHint': '우하단에 `사업명 | 학교명 | 날짜` 한 줄. 입력값은 이 브라우저에 기억됩니다.',
-
-    'conv.resize': '리사이즈',
-    'conv.long': '긴 변(px)',
-    'conv.target': '목표(KB)',
-    'conv.targetHint': '0이면 품질 슬라이더를 그대로 씁니다. 값을 넣으면 품질을 낮춰가며 맞춥니다(JPG만).',
-    'conv.format': '포맷 · 품질',
-    'conv.quality': '품질',
-    'conv.name': '파일명 규칙',
-    'conv.nameHint': '{school} {project} {date} {n} {orig} 사용 가능. {n}은 2자리 번호.',
-    'conv.applyCur': '현재 사진에 적용',
-    'conv.applyAll': '큐 전체 적용',
-    'conv.applyHint': '적용하면 원본 픽셀이 축소·재압축됩니다. 되돌리기로 한 단계 복구할 수 있습니다.',
-
-    'out.image': '이미지 다운로드',
-    'out.current': '현재 이미지',
-    'out.zip': '큐 전체 ZIP',
-    'out.exifHint': '내보낼 때 항상 캔버스로 다시 인코딩하므로 EXIF(GPS 포함)는 남지 않습니다.',
-    'out.sheet': '콘택트시트 PDF',
-    'out.sheetMake': 'A4 콘택트시트 만들기',
-    'out.pdf': '사진 PDF',
-    'out.pdfMake': '1장/페이지 PDF 만들기',
-    'out.merge': '전/후 합치기',
-    'out.mergeHint': '큐에서 체크박스로 2장을 고른 뒤 실행하면 좌우로 나란히 붙입니다.',
-    'out.mergeMake': '선택한 2장 합치기',
-
-    'bar.apply': '적용',
-    'bar.undo': '되돌리기',
-    'bar.revert': '원본 복구',
-    'bar.batch': '전체 일괄 가림',
-
-    'st.wait': '대기',
-    'st.ready': '준비',
-    'st.busy': '처리 중',
-    'st.done': '완료',
-    'st.err': '오류',
-
-    'msg.noImage': '먼저 사진을 추가하세요.',
-    'msg.unsupported': '지원하지 않는 형식: {name}',
-    'msg.heicFail': 'HEIC 변환 실패: {name}',
-    'msg.loadFail': '이미지를 열 수 없습니다: {name}',
-    'msg.added': '{n}장 추가',
-    'msg.detecting': '얼굴 검출 중…',
-    'msg.detected': '얼굴 {n}개 검출',
-    'msg.detectNone': '검출된 얼굴 없음 — 수동 박스를 쓰세요.',
-    'msg.detectFail': '얼굴 검출 모듈을 불러오지 못했습니다. http:// 로 열면 동작합니다. (수동 박스는 계속 사용 가능)',
-    'msg.applied': '적용 완료',
-    'msg.nothingToApply': '적용할 변경이 없습니다.',
-    'msg.undone': '한 단계 되돌렸습니다.',
-    'msg.noUndo': '되돌릴 단계가 없습니다.',
-    'msg.reverted': '원본으로 되돌렸습니다.',
-    'msg.noBox': '박스가 없습니다.',
-    'msg.noSel': '선택된 박스가 없습니다.',
-    'msg.batchDone': '일괄 처리 완료 ({ok}/{total})',
-    'msg.batchFail': '{n}장 실패 — 나머지는 계속 처리했습니다.',
-    'msg.needTwo': '큐에서 정확히 2장을 체크하세요.',
-    'msg.merged': '합친 이미지를 큐에 추가했습니다.',
-    'msg.cropTooSmall': '자르기 영역이 너무 작습니다.',
-    'msg.noCustom': '먼저 대체 이미지를 업로드하세요.',
-    'msg.pdfDone': 'PDF를 저장했습니다.',
-    'msg.zipDone': 'ZIP {n}장 저장 완료',
-    'msg.stampEmpty': '사업명/학교명/날짜 중 하나는 입력해야 합니다.',
-    'msg.working': '처리 중…',
-    'msg.pendingApply': '미적용 변경을 먼저 굽습니다.',
-
-    'ph.detectIdle': '',
-    'ph.faces': '얼굴 {n} · 박스 {b}'
-  };
-
-  var en = {
-    'app.tagline': 'Report photo prep, entirely in your browser',
-    'app.privacy': 'Photos are processed only inside this browser and are never uploaded.',
-    'queue.title': 'Queue',
-    'queue.drop': 'Drop photos here',
-    'queue.pick': 'Choose files',
-    'queue.clear': 'Clear queue',
-    'queue.removeSel': 'Remove checked',
-    'stage.empty': 'No image',
-    'stage.hint': 'Add photos on the left to start.',
-    'tab.face': 'Faces', 'tab.edit': 'Edit', 'tab.conv': 'Convert', 'tab.out': 'Export',
-    'face.detect': 'Detection', 'face.conf': 'Confidence', 'face.redetect': 'Re-detect',
-    'face.drawbox': 'Draw box',
-    'face.hint': 'Drag on empty area to add a manual box. Detected boxes are expanded 15%.',
-    'face.mode': 'Mask mode', 'face.pixelate': 'Pixelate', 'face.blur': 'Blur',
-    'face.icon': 'Icon', 'face.image': 'Image', 'face.block': 'Block', 'face.blurAmt': 'Amount',
-    'face.toSelected': 'Apply to selected', 'face.toAll': 'Apply to all',
-    'face.boxes': 'Boxes', 'face.delBox': 'Delete selected', 'face.clearBoxes': 'Delete all',
-    'face.delHint': 'Select a box and press Delete.',
-    'edit.geom': 'Crop / Rotate', 'edit.rotate': 'Rotate 90°', 'edit.flip': 'Flip H',
-    'edit.cropStart': 'Crop', 'edit.cropApply': 'Apply crop', 'edit.cropCancel': 'Cancel',
-    'edit.adjust': 'Adjust', 'edit.bright': 'Bright', 'edit.contrast': 'Contrast', 'edit.sat': 'Saturate',
-    'edit.reset': 'Reset', 'edit.annot': 'Annotate', 'edit.text': 'Text', 'edit.rect': 'Rect',
-    'edit.arrow': 'Arrow', 'edit.color': 'Color', 'edit.width': 'Width', 'edit.size': 'Size',
-    'edit.logo': 'Logo', 'edit.stamp': 'Stamp', 'edit.project': 'Project', 'edit.school': 'School',
-    'edit.date': 'Date', 'edit.addStamp': 'Add to current', 'edit.stampAll': 'Apply to queue',
-    'edit.stampHint': 'One line at bottom-right. Values are remembered in this browser.',
-    'conv.resize': 'Resize', 'conv.long': 'Long edge', 'conv.target': 'Target KB',
-    'conv.targetHint': '0 keeps the quality slider. Otherwise quality is lowered to fit (JPG only).',
-    'conv.format': 'Format / Quality', 'conv.quality': 'Quality', 'conv.name': 'Filename rule',
-    'conv.nameHint': 'Use {school} {project} {date} {n} {orig}. {n} is a 2-digit index.',
-    'conv.applyCur': 'Apply to current', 'conv.applyAll': 'Apply to queue',
-    'conv.applyHint': 'This re-encodes the full-resolution pixels. One undo step is kept.',
-    'out.image': 'Download', 'out.current': 'Current image', 'out.zip': 'Whole queue (ZIP)',
-    'out.exifHint': 'Every export is re-encoded through a canvas, so no EXIF (incl. GPS) survives.',
-    'out.sheet': 'Contact sheet PDF', 'out.sheetMake': 'Build A4 contact sheet',
-    'out.pdf': 'Photo PDF', 'out.pdfMake': 'One photo per page',
-    'out.merge': 'Before / After', 'out.mergeHint': 'Check exactly 2 items in the queue.',
-    'out.mergeMake': 'Merge checked 2',
-    'bar.apply': 'Apply', 'bar.undo': 'Undo', 'bar.revert': 'Revert to original',
-    'bar.batch': 'Batch mask all',
-    'st.wait': 'waiting', 'st.ready': 'ready', 'st.busy': 'working', 'st.done': 'done', 'st.err': 'error',
-    'msg.noImage': 'Add a photo first.',
-    'msg.unsupported': 'Unsupported file: {name}',
-    'msg.heicFail': 'HEIC conversion failed: {name}',
-    'msg.loadFail': 'Cannot open image: {name}',
-    'msg.added': '{n} added',
-    'msg.detecting': 'Detecting faces…',
-    'msg.detected': '{n} face(s) detected',
-    'msg.detectNone': 'No face detected — use manual boxes.',
-    'msg.detectFail': 'Face detector failed to load. Serve over http:// (manual boxes still work).',
-    'msg.applied': 'Applied',
-    'msg.nothingToApply': 'Nothing to apply.',
-    'msg.undone': 'Undone one step.',
-    'msg.noUndo': 'Nothing to undo.',
-    'msg.reverted': 'Reverted to original.',
-    'msg.noBox': 'No boxes.',
-    'msg.noSel': 'No box selected.',
-    'msg.batchDone': 'Batch done ({ok}/{total})',
-    'msg.batchFail': '{n} failed — the rest were processed.',
-    'msg.needTwo': 'Check exactly 2 items.',
-    'msg.merged': 'Merged image added to the queue.',
-    'msg.cropTooSmall': 'Crop area is too small.',
-    'msg.noCustom': 'Upload a replacement image first.',
-    'msg.pdfDone': 'PDF saved.',
-    'msg.zipDone': 'ZIP saved ({n} files)',
-    'msg.stampEmpty': 'Fill at least one of project / school / date.',
-    'msg.working': 'Working…',
-    'msg.pendingApply': 'Baking pending changes first.',
-    'ph.detectIdle': '',
-    'ph.faces': '{n} face(s) · {b} box(es)'
-  };
-
-  var dict = { ko: ko, en: en };
-  var lang = 'ko';
-
-  function t(key, vars) {
-    var s = (dict[lang] && dict[lang][key]) || (dict.ko[key]) || key;
-    if (vars) {
-      s = s.replace(/\{(\w+)\}/g, function (m, k) {
-        return Object.prototype.hasOwnProperty.call(vars, k) ? vars[k] : m;
-      });
-    }
-    return s;
-  }
-
-  function apply(root) {
-    (root || document).querySelectorAll('[data-i18n]').forEach(function (el) {
-      el.textContent = t(el.getAttribute('data-i18n'));
-    });
-  }
-
-  function setLang(l) { if (dict[l]) { lang = l; apply(document); } }
-
-  SnapLab.i18n = { t: t, apply: apply, setLang: setLang, get lang() { return lang; } };
+var GL_LANG = (function () {
+  try {
+    var saved = localStorage.getItem('language');
+    if (saved === 'ko' || saved === 'en') return saved;
+  } catch (e) {}
+  var nav = (navigator.language || navigator.userLanguage || 'ko');
+  return nav.toLowerCase().indexOf('ko') === 0 ? 'ko' : 'en';
 })();
+
+var GL_I18N = {
+  // ── 페이지 · 헤더 ──
+  'snap-box — 사진 정리': 'snap-box — Photo prep',
+  '보고서 사진 정리': 'Report photo prep',
+  '준비 중…': 'Getting ready…',
+  '준비 완료': 'Ready',
+  '얼굴 찾기 못 씀': 'Face finder off',
+  '전체화면': 'Full screen',
+
+  // ── 단계 ──
+  '얼굴 가리기': 'Hide faces',
+  '다듬기': 'Touch up',
+  '크기·용량': 'Size',
+  '내보내기': 'Export',
+
+  // ── 사진 목록 ──
+  '사진 목록': 'Photos',
+  '사진을 여기에 놓거나 눌러서 고릅니다': 'Drop photos here, or click to choose',
+  'JPG · PNG · WEBP · HEIC를 받습니다. HEIC는 넣는 즉시 JPG로 바꿉니다.':
+    'Takes JPG, PNG, WEBP and HEIC. HEIC is converted to JPG on the spot.',
+  '고른 것 빼기': 'Remove checked',
+  '모두 비우기': 'Clear all',
+  '대기': 'waiting',
+  '처리함': 'done',
+  '오류': 'error',
+
+  // ── 미리보기 ──
+  '미리보기': 'Preview',
+  '사진을 넣어 주세요': 'Add a photo',
+  '사진은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.':
+    'Photos are processed only inside this browser and are never uploaded.',
+  '왼쪽에 사진을 넣으면 여기에 나옵니다.': 'Add photos on the left and they show up here.',
+  '이전 사진': 'Previous',
+  '다음 사진': 'Next',
+  '적용': 'Apply',
+  '되돌리기': 'Undo',
+  '원본으로': 'Back to original',
+  '전체 한꺼번에 가리기': 'Hide faces in all',
+
+  // ── 얼굴 가리기 ──
+  '찾기': 'Find',
+  '기준값': 'Threshold',
+  '기준값을 내리면 더 많이 찾고, 올리면 확실한 것만 찾습니다.':
+    'Lower it to find more, raise it to keep only the sure ones.',
+  '다시 찾기': 'Find again',
+  '칸 그리기': 'Draw a box',
+  '못 찾은 얼굴은 사진 위를 끌어서 칸을 직접 그립니다. 찾은 칸은 상하좌우로 15% 넓혀 둡니다.':
+    'Drag on the photo to box a face it missed. Found boxes are widened by 15% on every side.',
+  '가리는 방법': 'How to hide',
+  '모자이크': 'Mosaic',
+  '흐리게': 'Blur',
+  '그림': 'Picture',
+  '내 이미지': 'My image',
+  '칸 수': 'Blocks',
+  '칸 수가 적을수록 더 많이 가립니다. 얼굴 너비를 8칸보다 잘게 쪼개지는 않습니다.':
+    'Fewer blocks hide more. A face is never cut into more than 8 blocks across.',
+  '가림 처리함': 'Faces hidden',
+  '바꾼 것을 사진에 굽습니다': 'Bake the changes into the photo',
+  '정도': 'Amount',
+  'PNG 고르기': 'Choose a PNG',
+  '아직 고른 이미지가 없습니다': 'No image chosen yet',
+  '고른 칸에만': 'Selected box',
+  '모든 칸에': 'All boxes',
+  '그림·내 이미지는 두 눈 위치로 기울기를 맞춥니다. 직접 그린 칸은 맞추지 않습니다.':
+    'Pictures are tilted to match the eyes. Boxes you draw are left upright.',
+  '칸 정리': 'Boxes',
+  '고른 칸 지우기': 'Delete selected',
+  '칸 모두 지우기': 'Delete all',
+  '칸을 고른 뒤 Delete 키로도 지웁니다.': 'You can also select a box and press Delete.',
+
+  // ── 다듬기 ──
+  '돌리기·자르기': 'Rotate & crop',
+  '90° 돌리기': 'Rotate 90°',
+  '좌우 뒤집기': 'Flip',
+  '자르기': 'Crop',
+  '이대로 자르기': 'Crop here',
+  '그만두기': 'Cancel',
+  '밝기·색': 'Brightness & color',
+  '밝기': 'Bright',
+  '대비': 'Contrast',
+  '채도': 'Color',
+  '표시 넣기': 'Markup',
+  '글자': 'Text',
+  '네모': 'Box',
+  '화살표': 'Arrow',
+  '색': 'Color',
+  '굵기': 'Width',
+  '글자 크기': 'Size',
+  '학교 로고 넣기': 'Add a logo',
+  '사진 아래 표기': 'Caption line',
+  '사업명': 'Program',
+  '학교명': 'School',
+  '날짜': 'Date',
+  '이 사진에': 'This photo',
+  '전체에': 'All photos',
+  '오른쪽 아래에 한 줄로 들어갑니다. 적은 값은 이 브라우저에 기억해 둡니다.':
+    'Goes in one line at the bottom right. What you type is remembered in this browser.',
+  '예) 늘봄 로봇교실': 'e.g. Robotics club',
+  '예) 서울초등학교': 'e.g. Seoul Elementary',
+  '내용': 'Text',
+
+  // ── 크기·용량 ──
+  '크기': 'Size',
+  '긴 변': 'Long edge',
+  '목표 용량': 'Target',
+  '목표 용량이 0이면 아래 품질을 그대로 씁니다. 값을 적으면 그 아래로 내려갈 때까지 품질을 낮춥니다. JPG에만 해당합니다.':
+    'Leave the target at 0 to keep the quality below. Give a number and quality is lowered until it fits. JPG only.',
+  '저장 형식': 'Format',
+  '품질': 'Quality',
+  '파일 이름': 'File name',
+  '쓸 수 있는 자리는 아래와 같습니다. {번호}는 두 자리입니다.':
+    'You can use the fields below. {n} is two digits.',
+  '{학교명} {사업명} {날짜} {번호} {원래이름}': '{school} {program} {date} {n} {original}',
+  '이렇게 저장됩니다': 'Saved as',
+  '적용하면 원본 크기가 실제로 줄어듭니다. 되돌리기로 한 단계 복구할 수 있습니다.':
+    'Applying actually shrinks the full-size pixels. Undo restores one step.',
+
+  // ── 내보내기 ──
+  '사진으로': 'As photos',
+  '이 사진': 'This photo',
+  '전체 ZIP': 'All as ZIP',
+  '내보낼 때 항상 다시 저장하므로 촬영 정보(EXIF·GPS)는 남지 않습니다.':
+    'Every export is re-encoded, so no camera data (EXIF, GPS) survives.',
+  '붙임 사진 대지 (PDF)': 'Contact sheet (PDF)',
+  '한 쪽에 4장': '4 per page',
+  '한 쪽에 6장': '6 per page',
+  '대지 만들기': 'Build the sheet',
+  'A4 세로, 사진 아래에 파일 이름, 맨 위에 사업명·학교명·날짜가 들어갑니다.':
+    'A4 portrait, file name under each photo, program and school on top.',
+  '한 쪽에 한 장 (PDF)': 'One per page (PDF)',
+  'PDF 만들기': 'Build the PDF',
+  '전·후 붙이기': 'Before & after',
+  '왼쪽 목록에서 두 장을 고른 뒤 누르면 좌우로 나란히 붙입니다.':
+    'Check two photos on the left to place them side by side.',
+  '고른 두 장 붙이기': 'Join the two',
+
+  // ── 알림 ──
+  '처리하는 중입니다': 'Working',
+  '사진을 먼저 넣어 주세요': 'Add a photo first',
+  '받을 수 없는 형식입니다': 'This file type is not supported',
+  'HEIC를 바꾸지 못했습니다': 'Could not convert the HEIC file',
+  '사진을 열지 못했습니다': 'Could not open the photo',
+  '얼굴을 찾는 중입니다': 'Looking for faces',
+  '찾은 얼굴이 없습니다. 칸을 직접 그려 주세요': 'No face found. Please draw a box',
+  '얼굴 찾기를 불러오지 못했습니다. 주소창이 file:// 이면 http:// 로 열어 주세요':
+    'Could not load the face finder. If the address starts with file://, open it over http://',
+  '적용했습니다': 'Applied',
+  '적용할 것이 없습니다': 'Nothing to apply',
+  '되돌렸습니다': 'Undone',
+  '더 되돌릴 것이 없습니다': 'Nothing left to undo',
+  '원본으로 되돌렸습니다': 'Back to the original',
+  '칸이 없습니다': 'There are no boxes',
+  '고른 칸이 없습니다': 'No box is selected',
+  '두 장만 골라 주세요': 'Please check exactly two photos',
+  '붙인 사진을 목록에 넣었습니다': 'The joined photo is in the list',
+  '자를 곳이 너무 작습니다': 'The crop area is too small',
+  '쓸 이미지를 먼저 골라 주세요': 'Choose an image to use first',
+  'PDF를 저장했습니다': 'PDF saved',
+  '사업명·학교명·날짜 중 하나는 적어 주세요': 'Fill in at least one of program, school or date',
+  '미적용분을 먼저 적용합니다': 'Applying what is pending first',
+  '아직 적용하지 않은 것을 지웠습니다': 'Cleared what had not been applied',
+  '사진을 모두 뺄까요? 되돌릴 수 없습니다.': 'Remove every photo? This cannot be undone.',
+  '뺄 사진을 체크해 주세요': 'Check the photos you want to remove',
+  '이 사진을 처음 넣었을 때로 되돌릴까요?': 'Put this photo back the way it came in?',
+  '왼쪽 목록에서 두 장을 체크해 주세요': 'Check two photos on the left',
+  '지금 설정': 'Current settings',
+  '원래대로': 'unchanged',
+  '쓰지 않음': 'off',
+  '단축키': 'Shortcuts',
+  '← → 이전·다음 사진 · Delete 고른 칸 지우기': '← → previous / next photo · Delete removes the selected box',
+
+  // ── 자리 채우기가 있는 문장 (GL_TF) ──
+  '찾은 얼굴 {n} · 칸 {b}': '{n} face(s) · {b} box(es)',
+  '{ok}장 모두 했습니다': 'Done — {ok} photo(s)',
+  '{ok}장 했습니다. {fail}장은 실패했습니다': 'Done {ok}, failed {fail}',
+  '{n}장을 ZIP으로 저장했습니다': 'Saved {n} photo(s) as ZIP',
+  '체크한 {n}장을 뺄까요?': 'Remove the {n} checked photo(s)?'
+};
+
+// 한국어 원문 → 현재 언어. 사전에 없으면 원문 그대로.
+function GL_T(ko) {
+  if (GL_LANG === 'ko') return ko;
+  var v = GL_I18N[ko];
+  return (v === undefined) ? ko : v;
+}
+
+// 자리 채우기용 — GL_T 로 번역한 뒤 {키} 를 값으로 바꾼다.
+function GL_TF(ko, vars) {
+  var s = GL_T(ko);
+  if (!vars) return s;
+  return s.replace(/\{(\w+)\}/g, function (m, k) {
+    return Object.prototype.hasOwnProperty.call(vars, k) ? vars[k] : m;
+  });
+}
+
+// ── 화면(HTML) 자동 번역 — sense-lab 과 동일 ──
+function localizeDOM(root) {
+  if (GL_LANG === 'ko') return;
+  var scope = root || document.body;
+  if (!scope) return;
+
+  var walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, null);
+  var hits = [], n;
+  while ((n = walker.nextNode())) {
+    var tag = n.parentNode && n.parentNode.nodeName;
+    if (tag === 'SCRIPT' || tag === 'STYLE') continue;
+    var raw = n.nodeValue.trim();
+    if (!raw || GL_I18N[raw] === undefined) continue;
+    hits.push([n, n.nodeValue.replace(raw, GL_I18N[raw])]);
+  }
+  hits.forEach(function (h) { h[0].nodeValue = h[1]; });
+
+  ['title', 'placeholder'].forEach(function (attr) {
+    scope.querySelectorAll('[' + attr + ']').forEach(function (el) {
+      var v = GL_I18N[el.getAttribute(attr).trim()];
+      if (v !== undefined) el.setAttribute(attr, v);
+    });
+  });
+
+  if (document.title && GL_I18N[document.title.trim()] !== undefined)
+    document.title = GL_I18N[document.title.trim()];
+}
+
+// ── 언어 토글 버튼 (sense-lab 과 같은 버튼·위치·저장 키) ──
+function setLanguage(v) {
+  try { localStorage.setItem('language', v); } catch (e) {}
+  location.reload();
+}
+
+function mountLangToggle() {
+  var bar = document.querySelector('header');
+  if (!bar || document.getElementById('langToggle')) return;
+
+  var toKo = (GL_LANG !== 'ko');
+  var b = document.createElement('button');
+  b.id = 'langToggle';
+  b.type = 'button';
+  b.textContent = toKo ? '한' : 'EN';
+  b.title = '한국어 / English';
+  b.addEventListener('click', function () { setLanguage(toKo ? 'ko' : 'en'); });
+  bar.appendChild(b);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () { localizeDOM(); mountLangToggle(); });
+} else { localizeDOM(); mountLangToggle(); }
+
+SnapLab.i18n = { t: GL_T, tf: GL_TF, localizeDOM: localizeDOM, get lang() { return GL_LANG; } };

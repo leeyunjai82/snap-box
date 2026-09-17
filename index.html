@@ -2,263 +2,298 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1280">
-<title>snap-box</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6feb'/%3E%3Ccircle cx='16' cy='17' r='6' fill='%23fff'/%3E%3Crect x='10' y='6' width='12' height='4' rx='2' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css">
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>snap-box — 사진 정리</title>
+<meta name="description" content="보고서에 넣을 사진의 얼굴 가림·편집·용량 정리를 이 브라우저 안에서 끝냅니다.">
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<meta name="theme-color" content="#FBF7EF">
+<link rel="stylesheet" href="assets/fonts/pretendard.css">
+<link rel="stylesheet" href="css/all.min.css">
+<link rel="stylesheet" href="css/maker-ui.css">
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 
-<header id="topbar">
-  <div class="brand">
-    <span class="logo"></span>
-    <strong>snap-box</strong>
-    <span class="tagline" data-i18n="app.tagline"></span>
-  </div>
-  <div class="spacer"></div>
-  <div id="privacyNote" class="privacy">
-    <span data-i18n="app.privacy"></span>
-    <button id="privacyClose" class="linkbtn" title="닫기">&times;</button>
-  </div>
-</header>
+<header data-tab="index.html"></header>
 
-<main id="layout">
+<div id="steps">
+  <button class="stp on" data-step="face"><span class="cir">1</span>얼굴 가리기</button>
+  <div class="stpline"></div>
+  <button class="stp" data-step="edit"><span class="cir">2</span>다듬기</button>
+  <div class="stpline"></div>
+  <button class="stp" data-step="conv"><span class="cir">3</span>크기·용량</button>
+  <div class="stpline"></div>
+  <button class="stp" data-step="out"><span class="cir">4</span>내보내기</button>
+</div>
 
-  <!-- ── 좌: 파일 큐 ───────────────────────────────── -->
-  <section id="queuePane">
-    <div class="pane-head">
-      <span data-i18n="queue.title"></span>
-      <span id="queueCount" class="badge">0</span>
+<div class="mk-main">
+
+  <!-- ── 왼쪽: 사진 목록 ────────────────────────────── -->
+  <section class="pan pan-side" id="panQueue">
+    <div class="ph"><i class="fa-solid fa-images"></i>사진 목록<span class="ph-count num" id="queueCount">0</span></div>
+    <div class="pb">
+      <div class="dropzone" id="dropZone">
+        <i class="fa-solid fa-plus"></i><br>사진을 여기에 놓거나 눌러서 고릅니다
+        <input type="file" id="fileInput" multiple
+               accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif">
+      </div>
+      <div class="hint" id="queueHint">JPG · PNG · WEBP · HEIC를 받습니다. HEIC는 넣는 즉시 JPG로 바꿉니다.</div>
+      <div id="queueList"></div>
     </div>
-    <div id="dropZone">
-      <p data-i18n="queue.drop"></p>
-      <button id="btnPick" class="btn primary" data-i18n="queue.pick"></button>
-      <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif" hidden>
-    </div>
-    <ul id="queueList"></ul>
-    <div class="pane-foot">
-      <button id="btnClearQueue" class="btn tiny ghost" data-i18n="queue.clear"></button>
-      <button id="btnRemoveSel" class="btn tiny ghost" data-i18n="queue.removeSel"></button>
+    <div class="pf">
+      <button class="db danger" id="btnRemoveSel"><i class="fa-solid fa-trash-can"></i>고른 것 빼기</button>
+      <button class="db danger" id="btnClearQueue">모두 비우기</button>
     </div>
   </section>
 
-  <!-- ── 중: 캔버스 ────────────────────────────────── -->
-  <section id="stagePane">
-    <div id="stageHead">
-      <span id="stageName" class="ellip" data-i18n="stage.empty"></span>
-      <span id="stageDims" class="dim"></span>
-      <span class="spacer"></span>
-      <span id="detectState" class="dim"></span>
+  <!-- ── 가운데: 미리보기 ───────────────────────────── -->
+  <section class="pan pan-wide" id="panStage">
+    <div class="ph">
+      <i class="fa-solid fa-image"></i><span id="stageName">미리보기</span>
+      <span class="ph-meta num" id="stageDims"></span>
+      <span class="ph-sp"></span>
+      <span class="badge" id="detectState">사진을 넣어 주세요</span>
     </div>
-    <div id="stageWrap">
+    <div class="pb pb-stage" id="stageWrap">
       <canvas id="c"></canvas>
-      <div id="stageEmpty" data-i18n="stage.hint"></div>
+      <div id="stageEmpty">
+        <i class="fa-solid fa-shield-halved"></i>
+        <p>사진은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.</p>
+        <span>왼쪽에 사진을 넣으면 여기에 나옵니다.</span>
+      </div>
     </div>
   </section>
 
-  <!-- ── 우: 도구 패널 ─────────────────────────────── -->
-  <section id="toolPane">
-    <nav id="tabs">
-      <button class="tab active" data-tab="face"   data-i18n="tab.face"></button>
-      <button class="tab"        data-tab="edit"   data-i18n="tab.edit"></button>
-      <button class="tab"        data-tab="conv"   data-i18n="tab.conv"></button>
-      <button class="tab"        data-tab="out"    data-i18n="tab.out"></button>
-    </nav>
+  <!-- ── 오른쪽: 도구 ──────────────────────────────── -->
+  <section class="pan pan-out" id="panTool">
+    <div class="ph"><i class="fa-solid fa-eye-slash" id="toolIcon"></i><span id="toolTitle">얼굴 가리기</span></div>
+    <div class="pb">
 
-    <div class="tabbody" id="tab-face">
-      <div class="grp">
-        <div class="grp-title" data-i18n="face.detect"></div>
-        <label class="row"><span data-i18n="face.conf"></span>
+      <!-- 1. 얼굴 가리기 -->
+      <div class="tool" id="tool-face">
+        <div class="pb-label">찾기</div>
+        <div class="rangerow">
+          <label for="confSlider">기준값</label>
           <input type="range" id="confSlider" min="10" max="90" step="5" value="50">
-          <output id="confOut">0.50</output>
-        </label>
-        <div class="row">
-          <button id="btnRedetect" class="btn" data-i18n="face.redetect"></button>
-          <button id="btnDrawBox" class="btn toggle on" data-i18n="face.drawbox"></button>
+          <output class="num" id="confOut">0.50</output>
         </div>
-        <p class="hint" data-i18n="face.hint"></p>
+        <div class="hint">기준값을 내리면 더 많이 찾고, 올리면 확실한 것만 찾습니다.</div>
+        <div class="row" style="margin-top:8px">
+          <button class="db" id="btnRedetect"><i class="fa-solid fa-magnifying-glass"></i>다시 찾기</button>
+          <button class="db on" id="btnDrawBox"><i class="fa-solid fa-vector-square"></i>칸 그리기</button>
+        </div>
+        <div class="hint">못 찾은 얼굴은 사진 위를 끌어서 칸을 직접 그립니다. 찾은 칸은 상하좌우로 15% 넓혀 둡니다.</div>
+
+        <div class="sec2">
+          <div class="st">가리는 방법</div>
+          <div class="pickrow" id="maskType">
+            <button class="db on" data-v="pixelate">모자이크</button>
+            <button class="db" data-v="blur">흐리게</button>
+            <button class="db" data-v="icon">그림</button>
+            <button class="db" data-v="image">내 이미지</button>
+          </div>
+
+          <div class="opt" data-for="pixelate">
+            <div class="rangerow">
+              <label for="pixelCols">칸 수</label>
+              <input type="range" id="pixelCols" min="3" max="8" step="1" value="5">
+              <output class="num" id="pixelColsOut">5</output>
+            </div>
+            <div class="hint">칸 수가 적을수록 더 많이 가립니다. 얼굴 너비를 8칸보다 잘게 쪼개지는 않습니다.</div>
+          </div>
+          <div class="opt" data-for="blur" hidden>
+            <div class="rangerow">
+              <label for="blurStrength">정도</label>
+              <input type="range" id="blurStrength" min="10" max="100" step="5" value="60">
+              <output class="num" id="blurStrengthOut">60</output>
+            </div>
+          </div>
+          <div class="opt" data-for="icon" hidden>
+            <div id="iconPicker" class="iconpick"></div>
+          </div>
+          <div class="opt" data-for="image" hidden>
+            <label class="db filebtn" for="customMaskFile"><i class="fa-solid fa-image"></i>PNG 고르기</label>
+            <input type="file" id="customMaskFile" accept="image/png,image/jpeg,image/webp">
+            <div id="customMaskPrev" class="custprev">아직 고른 이미지가 없습니다</div>
+          </div>
+
+          <div class="row" style="margin-top:9px">
+            <button class="db" id="btnApplyToSelected">고른 칸에만</button>
+            <button class="db" id="btnApplyToAll">모든 칸에</button>
+          </div>
+          <div class="hint">그림·내 이미지는 두 눈 위치로 기울기를 맞춥니다. 직접 그린 칸은 맞추지 않습니다.</div>
+        </div>
+
+        <div class="sec2">
+          <div class="st">칸 정리</div>
+          <div class="row">
+            <button class="db danger" id="btnDelBox">고른 칸 지우기</button>
+            <button class="db danger" id="btnClearBoxes">칸 모두 지우기</button>
+          </div>
+          <div class="hint">칸을 고른 뒤 Delete 키로도 지웁니다.</div>
+        </div>
+
+        <div class="sec2">
+          <div class="st">단축키</div>
+          <div class="hint">← → 이전·다음 사진 · Delete 고른 칸 지우기</div>
+        </div>
       </div>
 
-      <div class="grp">
-        <div class="grp-title" data-i18n="face.mode"></div>
-        <div class="seg" id="maskType">
-          <button class="seg-b active" data-v="pixelate" data-i18n="face.pixelate"></button>
-          <button class="seg-b" data-v="blur" data-i18n="face.blur"></button>
-          <button class="seg-b" data-v="icon" data-i18n="face.icon"></button>
-          <button class="seg-b" data-v="image" data-i18n="face.image"></button>
+      <!-- 2. 다듬기 -->
+      <div class="tool" id="tool-edit" hidden>
+        <div class="pb-label">돌리기·자르기</div>
+        <div class="row">
+          <button class="db" id="btnRotate"><i class="fa-solid fa-rotate-right"></i>90° 돌리기</button>
+          <button class="db" id="btnFlip"><i class="fa-solid fa-left-right"></i>좌우 뒤집기</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button class="db" id="btnCropStart"><i class="fa-solid fa-crop-simple"></i>자르기</button>
+          <button class="db go" id="btnCropApply" hidden><i class="fa-solid fa-check"></i>이대로 자르기</button>
+          <button class="db danger" id="btnCropCancel" hidden>그만두기</button>
         </div>
 
-        <label class="row opt" data-for="pixelate"><span data-i18n="face.block"></span>
-          <input type="range" id="pixelBlock" min="4" max="48" step="2" value="14">
-          <output id="pixelBlockOut">14</output>
-        </label>
-        <label class="row opt" data-for="blur" hidden><span data-i18n="face.blurAmt"></span>
-          <input type="range" id="blurStrength" min="10" max="100" step="5" value="45">
-          <output id="blurStrengthOut">45</output>
-        </label>
-        <div class="opt" data-for="icon" hidden>
-          <div id="iconPicker" class="iconpicker"></div>
-        </div>
-        <div class="opt" data-for="image" hidden>
-          <input type="file" id="customMaskFile" accept="image/png,image/jpeg,image/webp">
-          <div id="customMaskPrev" class="custprev"></div>
+        <div class="sec2">
+          <div class="st">밝기·색</div>
+          <div class="rangerow"><label for="adjBright">밝기</label>
+            <input type="range" id="adjBright" min="50" max="150" step="1" value="100"><output class="num" id="adjBrightOut">100</output></div>
+          <div class="rangerow"><label for="adjContrast">대비</label>
+            <input type="range" id="adjContrast" min="50" max="150" step="1" value="100"><output class="num" id="adjContrastOut">100</output></div>
+          <div class="rangerow"><label for="adjSat">채도</label>
+            <input type="range" id="adjSat" min="0" max="200" step="1" value="100"><output class="num" id="adjSatOut">100</output></div>
+          <button class="db danger" id="btnAdjReset" style="margin-top:6px">되돌리기</button>
         </div>
 
-        <div class="row">
-          <button id="btnApplyToSelected" class="btn" data-i18n="face.toSelected"></button>
-          <button id="btnApplyToAll" class="btn" data-i18n="face.toAll"></button>
+        <div class="sec2">
+          <div class="st">표시 넣기</div>
+          <div class="row">
+            <button class="db" id="btnAddText"><i class="fa-solid fa-font"></i>글자</button>
+            <button class="db" id="btnAddRect"><i class="fa-solid fa-vector-square"></i>네모</button>
+            <button class="db" id="btnAddArrow"><i class="fa-solid fa-arrow-right-long"></i>화살표</button>
+          </div>
+          <div class="row minirow" style="margin-top:7px">
+            <label class="mini">색<input type="color" id="annotColor" value="#B4451C"></label>
+            <label class="mini">굵기<input class="inp" type="number" id="annotWidth" min="1" max="30" value="4"></label>
+            <label class="mini">글자 크기<input class="inp" type="number" id="annotSize" min="10" max="200" value="36"></label>
+          </div>
+          <label class="db filebtn" for="logoFile" data-needs-photo style="margin-top:7px"><i class="fa-solid fa-image"></i>학교 로고 넣기</label>
+          <input type="file" id="logoFile" accept="image/png,image/svg+xml,image/jpeg">
         </div>
-      </div>
 
-      <div class="grp">
-        <div class="grp-title" data-i18n="face.boxes"></div>
-        <div class="row">
-          <button id="btnDelBox" class="btn ghost" data-i18n="face.delBox"></button>
-          <button id="btnClearBoxes" class="btn ghost" data-i18n="face.clearBoxes"></button>
-        </div>
-        <p class="hint" data-i18n="face.delHint"></p>
-      </div>
-    </div>
-
-    <div class="tabbody" id="tab-edit" hidden>
-      <div class="grp">
-        <div class="grp-title" data-i18n="edit.geom"></div>
-        <div class="row">
-          <button id="btnRotate" class="btn" data-i18n="edit.rotate"></button>
-          <button id="btnFlip" class="btn" data-i18n="edit.flip"></button>
-        </div>
-        <div class="row">
-          <button id="btnCropStart" class="btn" data-i18n="edit.cropStart"></button>
-          <button id="btnCropApply" class="btn primary" data-i18n="edit.cropApply" hidden></button>
-          <button id="btnCropCancel" class="btn ghost" data-i18n="edit.cropCancel" hidden></button>
+        <div class="sec2">
+          <div class="st">사진 아래 표기</div>
+          <div class="fieldrow"><label for="stampProject">사업명</label><input class="inp" type="text" id="stampProject" placeholder="예) 늘봄 로봇교실"></div>
+          <div class="fieldrow"><label for="stampSchool">학교명</label><input class="inp" type="text" id="stampSchool" placeholder="예) 서울초등학교"></div>
+          <div class="fieldrow"><label for="stampDate">날짜</label><input class="inp" type="date" id="stampDate"></div>
+          <div class="row" style="margin-top:7px">
+            <button class="db" id="btnAddStamp"><i class="fa-solid fa-stamp"></i>이 사진에</button>
+            <button class="db" id="btnStampAll"><i class="fa-solid fa-layer-group"></i>전체에</button>
+          </div>
+          <div class="hint">오른쪽 아래에 한 줄로 들어갑니다. 적은 값은 이 브라우저에 기억해 둡니다.</div>
+          <div class="namepv mono" id="stampPreview"></div>
         </div>
       </div>
 
-      <div class="grp">
-        <div class="grp-title" data-i18n="edit.adjust"></div>
-        <label class="row"><span data-i18n="edit.bright"></span>
-          <input type="range" id="adjBright" min="50" max="150" step="1" value="100"><output id="adjBrightOut">100</output></label>
-        <label class="row"><span data-i18n="edit.contrast"></span>
-          <input type="range" id="adjContrast" min="50" max="150" step="1" value="100"><output id="adjContrastOut">100</output></label>
-        <label class="row"><span data-i18n="edit.sat"></span>
-          <input type="range" id="adjSat" min="0" max="200" step="1" value="100"><output id="adjSatOut">100</output></label>
-        <button id="btnAdjReset" class="btn tiny ghost" data-i18n="edit.reset"></button>
+      <!-- 3. 크기·용량 -->
+      <div class="tool" id="tool-conv" hidden>
+        <div class="pb-label">크기</div>
+        <div class="fieldrow"><label for="resizeLong">긴 변</label>
+          <input class="inp" type="number" id="resizeLong" min="0" max="8000" step="100" value="1600"><span class="unit">px</span></div>
+        <div class="fieldrow"><label for="targetKB">목표 용량</label>
+          <input class="inp" type="number" id="targetKB" min="0" max="20000" step="50" value="0"><span class="unit">KB</span></div>
+        <div class="hint">목표 용량이 0이면 아래 품질을 그대로 씁니다. 값을 적으면 그 아래로 내려갈 때까지 품질을 낮춥니다. JPG에만 해당합니다.</div>
+
+        <div class="sec2">
+          <div class="st">저장 형식</div>
+          <div class="pickrow" id="outFormat">
+            <button class="db on" data-v="image/jpeg">JPG</button>
+            <button class="db" data-v="image/png">PNG</button>
+          </div>
+          <div class="rangerow"><label for="outQuality">품질</label>
+            <input type="range" id="outQuality" min="40" max="100" step="1" value="88"><output class="num" id="outQualityOut">88</output></div>
+        </div>
+
+        <div class="sec2">
+          <div class="st">파일 이름</div>
+          <input class="inp" type="text" id="nameTemplate" value="{학교명}_{날짜}_{번호}">
+          <div class="hint">쓸 수 있는 자리는 아래와 같습니다. {번호}는 두 자리입니다.</div>
+          <div class="namepv mono">{학교명} {사업명} {날짜} {번호} {원래이름}</div>
+          <div class="pb-label" style="margin-top:8px">이렇게 저장됩니다</div>
+          <div class="namepv mono" id="namePreview"></div>
+        </div>
+
+        <div class="sec2">
+          <div class="row">
+            <button class="db" id="btnConvertCurrent">이 사진에</button>
+            <button class="db go" id="btnConvertAll"><i class="fa-solid fa-layer-group"></i>전체에</button>
+          </div>
+          <div class="hint">적용하면 원본 크기가 실제로 줄어듭니다. 되돌리기로 한 단계 복구할 수 있습니다.</div>
+        </div>
       </div>
 
-      <div class="grp">
-        <div class="grp-title" data-i18n="edit.annot"></div>
+      <!-- 4. 내보내기 -->
+      <div class="tool" id="tool-out" hidden>
+        <div class="pb-label">지금 설정</div>
+        <div class="summary" id="outSummary"></div>
+
+        <div class="pb-label" style="margin-top:11px">사진으로</div>
         <div class="row">
-          <button id="btnAddText" class="btn" data-i18n="edit.text"></button>
-          <button id="btnAddRect" class="btn" data-i18n="edit.rect"></button>
-          <button id="btnAddArrow" class="btn" data-i18n="edit.arrow"></button>
+          <button class="db" id="btnDownloadCurrent"><i class="fa-solid fa-download"></i>이 사진</button>
+          <button class="db go" id="btnDownloadZip"><i class="fa-solid fa-file-zipper"></i>전체 ZIP</button>
         </div>
-        <div class="row">
-          <label class="mini"><span data-i18n="edit.color"></span><input type="color" id="annotColor" value="#ff3b30"></label>
-          <label class="mini"><span data-i18n="edit.width"></span><input type="number" id="annotWidth" min="1" max="30" value="4"></label>
-          <label class="mini"><span data-i18n="edit.size"></span><input type="number" id="annotSize" min="10" max="200" value="36"></label>
+        <div class="hint">내보낼 때 항상 다시 저장하므로 촬영 정보(EXIF·GPS)는 남지 않습니다.</div>
+
+        <div class="sec2">
+          <div class="st">붙임 사진 대지 (PDF)</div>
+          <div class="pickrow" id="sheetLayout">
+            <button class="db on" data-v="2x2">한 쪽에 4장</button>
+            <button class="db" data-v="2x3">한 쪽에 6장</button>
+          </div>
+          <button class="db" id="btnContactSheet" style="width:100%;justify-content:center"><i class="fa-solid fa-table-cells"></i>대지 만들기</button>
+          <div class="hint">A4 세로, 사진 아래에 파일 이름, 맨 위에 사업명·학교명·날짜가 들어갑니다.</div>
         </div>
-        <label class="row"><span data-i18n="edit.logo"></span><input type="file" id="logoFile" accept="image/png,image/svg+xml,image/jpeg"></label>
+
+        <div class="sec2">
+          <div class="st">한 쪽에 한 장 (PDF)</div>
+          <button class="db" id="btnPhotoPdf" style="width:100%;justify-content:center"><i class="fa-solid fa-file-pdf"></i>PDF 만들기</button>
+        </div>
+
+        <div class="sec2">
+          <div class="st">전·후 붙이기</div>
+          <div class="hint">왼쪽 목록에서 두 장을 고른 뒤 누르면 좌우로 나란히 붙입니다.</div>
+          <button class="db" id="btnMerge" style="width:100%;justify-content:center;margin-top:7px"><i class="fa-solid fa-object-group"></i>고른 두 장 붙이기</button>
+        </div>
       </div>
 
-      <div class="grp">
-        <div class="grp-title" data-i18n="edit.stamp"></div>
-        <label class="row"><span data-i18n="edit.project"></span><input type="text" id="stampProject" placeholder="사업명"></label>
-        <label class="row"><span data-i18n="edit.school"></span><input type="text" id="stampSchool" placeholder="학교명"></label>
-        <label class="row"><span data-i18n="edit.date"></span><input type="date" id="stampDate"></label>
-        <div class="row">
-          <button id="btnAddStamp" class="btn" data-i18n="edit.addStamp"></button>
-          <button id="btnStampAll" class="btn" data-i18n="edit.stampAll"></button>
-        </div>
-        <p class="hint" data-i18n="edit.stampHint"></p>
-      </div>
-    </div>
-
-    <div class="tabbody" id="tab-conv" hidden>
-      <div class="grp">
-        <div class="grp-title" data-i18n="conv.resize"></div>
-        <label class="row"><span data-i18n="conv.long"></span><input type="number" id="resizeLong" min="200" max="8000" step="100" value="1600"></label>
-        <label class="row"><span data-i18n="conv.target"></span><input type="number" id="targetKB" min="0" max="20000" step="50" value="0" placeholder="0 = 사용 안 함"></label>
-        <p class="hint" data-i18n="conv.targetHint"></p>
-      </div>
-      <div class="grp">
-        <div class="grp-title" data-i18n="conv.format"></div>
-        <div class="seg" id="outFormat">
-          <button class="seg-b active" data-v="image/jpeg">JPG</button>
-          <button class="seg-b" data-v="image/png">PNG</button>
-        </div>
-        <label class="row"><span data-i18n="conv.quality"></span>
-          <input type="range" id="outQuality" min="40" max="100" step="1" value="88"><output id="outQualityOut">88</output></label>
-      </div>
-      <div class="grp">
-        <div class="grp-title" data-i18n="conv.name"></div>
-        <label class="row"><input type="text" id="nameTemplate" value="{school}_{date}_{n}"></label>
-        <p class="hint" data-i18n="conv.nameHint"></p>
-        <div id="namePreview" class="hint mono"></div>
-      </div>
-      <div class="grp">
-        <div class="row">
-          <button id="btnConvertCurrent" class="btn" data-i18n="conv.applyCur"></button>
-          <button id="btnConvertAll" class="btn primary" data-i18n="conv.applyAll"></button>
-        </div>
-        <p class="hint" data-i18n="conv.applyHint"></p>
-      </div>
-    </div>
-
-    <div class="tabbody" id="tab-out" hidden>
-      <div class="grp">
-        <div class="grp-title" data-i18n="out.image"></div>
-        <div class="row">
-          <button id="btnDownloadCurrent" class="btn" data-i18n="out.current"></button>
-          <button id="btnDownloadZip" class="btn primary" data-i18n="out.zip"></button>
-        </div>
-        <p class="hint" data-i18n="out.exifHint"></p>
-      </div>
-      <div class="grp">
-        <div class="grp-title" data-i18n="out.sheet"></div>
-        <div class="seg" id="sheetLayout">
-          <button class="seg-b active" data-v="2x2">2 &times; 2</button>
-          <button class="seg-b" data-v="2x3">2 &times; 3</button>
-        </div>
-        <button id="btnContactSheet" class="btn" data-i18n="out.sheetMake"></button>
-      </div>
-      <div class="grp">
-        <div class="grp-title" data-i18n="out.pdf"></div>
-        <button id="btnPhotoPdf" class="btn" data-i18n="out.pdfMake"></button>
-      </div>
-      <div class="grp">
-        <div class="grp-title" data-i18n="out.merge"></div>
-        <p class="hint" data-i18n="out.mergeHint"></p>
-        <button id="btnMerge" class="btn" data-i18n="out.mergeMake"></button>
-      </div>
     </div>
   </section>
-</main>
+</div>
 
-<footer id="bottombar">
-  <button id="btnPrev" class="btn ghost">&larr;</button>
-  <button id="btnNext" class="btn ghost">&rarr;</button>
-  <span class="sep"></span>
-  <button id="btnApply" class="btn primary" data-i18n="bar.apply"></button>
-  <button id="btnUndo" class="btn" data-i18n="bar.undo"></button>
-  <button id="btnRevert" class="btn ghost" data-i18n="bar.revert"></button>
-  <span class="sep"></span>
-  <button id="btnBatchAll" class="btn accent" data-i18n="bar.batch"></button>
-  <span class="spacer"></span>
-  <div id="progressWrap" hidden>
-    <div id="progressBar"><i></i></div>
-    <span id="progressText" class="dim"></span>
+<div class="mk-bar">
+  <button class="db" id="btnPrev" title="이전 사진"><i class="fa-solid fa-chevron-left"></i></button>
+  <span class="num" id="posLabel">0 / 0</span>
+  <button class="db" id="btnNext" title="다음 사진"><i class="fa-solid fa-chevron-right"></i></button>
+  <span class="bar-div"></span>
+  <button class="db go" id="btnApply"><i class="fa-solid fa-check"></i>적용</button>
+  <button class="db" id="btnUndo"><i class="fa-solid fa-rotate-left"></i>되돌리기</button>
+  <button class="db danger" id="btnRevert"><i class="fa-solid fa-clock-rotate-left"></i>원본으로</button>
+  <span class="bar-div"></span>
+  <button class="db" id="btnBatchAll"><i class="fa-solid fa-layer-group"></i>전체 한꺼번에 가리기</button>
+  <span class="bar-sp"></span>
+  <div class="prg" id="progressWrap" hidden>
+    <div class="lb"><span id="progressText"></span><span class="num" id="progressPct"></span></div>
+    <div class="track"><div class="fill" id="progressFill"></div></div>
   </div>
-</footer>
+</div>
 
-<div id="toasts"></div>
-<div id="busy" hidden><div class="spin"></div><span id="busyText"></span></div>
+<div id="toast"></div>
+<div id="busy" hidden><div class="busy-box"><span class="busy-mark"></span><span id="busyText">처리하는 중입니다</span></div></div>
 
+<script src="js/nav.js"></script>
 <script src="js/i18n.js"></script>
+<script src="vendor/fabric/fabric.min.js"></script>
+<script src="vendor/jszip/jszip.min.js"></script>
+<script src="vendor/jspdf/jspdf.umd.min.js"></script>
+<script src="vendor/heic2any/heic2any.min.js"></script>
 <script src="js/convert.js"></script>
 <script src="js/face.js"></script>
 <script src="js/editor.js"></script>

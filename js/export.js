@@ -18,14 +18,25 @@ window.SnapLab = window.SnapLab || {};
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
-  /* {school} {project} {date} {n} {orig} */
+  /* 파일 이름 틀. 한국어·영어 자리 이름을 모두 받는다.
+   *   {학교명}{school} {사업명}{project} {날짜}{date} {번호}{n} {원래이름}{orig} */
+  var NAME_KEYS = {
+    '학교명': 'school', 'school': 'school',
+    '사업명': 'project', 'program': 'project', 'project': 'project',
+    '날짜': 'date', 'date': 'date',
+    '번호': 'n', 'n': 'n',
+    '원래이름': 'orig', 'original': 'orig', 'orig': 'orig'
+  };
+
   function buildName(template, vars, mime) {
-    var t = template && template.trim() ? template : '{orig}';
-    var s = t.replace(/\{(\w+)\}/g, function (m, k) {
+    var t = template && template.trim() ? template : '{원래이름}';
+    var s = t.replace(/\{([^}]*)\}/g, function (m, raw) {
+      var k = NAME_KEYS[raw.trim()];
+      if (!k) return '';
       if (k === 'n') return String(vars.n).padStart(2, '0');
       return C.sanitize(vars[k] != null ? vars[k] : '');
     });
-    s = s.replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '');
+    s = s.replace(/_{2,}/g, '_').replace(/^[_\s-]+|[_\s-]+$/g, '').trim();
     if (!s) s = 'image';
     return s + '.' + C.extFor(mime);
   }

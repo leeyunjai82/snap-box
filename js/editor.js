@@ -32,9 +32,10 @@ window.SnapLab = window.SnapLab || {};
       uniformScaling: false
     });
     fabric.Object.prototype.transparentCorners = false;
-    fabric.Object.prototype.cornerColor = '#2f6feb';
-    fabric.Object.prototype.cornerStrokeColor = '#ffffff';
-    fabric.Object.prototype.borderColor = '#2f6feb';
+    // 색은 css/maker-ui.css 토큰과 같은 값 — 남색 펜(--acc), 미색 종이(--panel2)
+    fabric.Object.prototype.cornerColor = '#1F5F7A';
+    fabric.Object.prototype.cornerStrokeColor = '#FBFAF5';
+    fabric.Object.prototype.borderColor = '#1F5F7A';
     fabric.Object.prototype.cornerSize = 10;
     fabric.Object.prototype.padding = 0;
 
@@ -107,9 +108,9 @@ window.SnapLab = window.SnapLab || {};
 
   /* ── 마스크 ────────────────────────────────────────────── */
 
-  function normalizeDef(def, boxW) {
+  function normalizeDef(def) {
     var d = Object.assign({}, def);
-    d.cols = F.colsFor(boxW, d.block || 14);
+    d.cols = F.clampCols(d.cols);
     return d;
   }
 
@@ -119,7 +120,7 @@ window.SnapLab = window.SnapLab || {};
 
   function addMask(rect, def) {
     if (!srcCanvas) return null;
-    var d = normalizeDef(def, rect.w);
+    var d = normalizeDef(def);
     var patch = makePatch(rect, d);
     var obj = new fabric.Image(patch, {
       left: rect.cx, top: rect.cy,
@@ -153,7 +154,7 @@ window.SnapLab = window.SnapLab || {};
   function refreshMask(obj) {
     if (!srcCanvas) return;
     var r = maskRect(obj);
-    obj.data.def = normalizeDef(obj.data.def, r.w);
+    obj.data.def = normalizeDef(obj.data.def);
     var patch = makePatch({ cx: r.cx, cy: r.cy, w: r.w, h: r.h }, obj.data.def);
     obj.setElement(patch);
     obj.set({ scaleX: 1, scaleY: 1 });
@@ -168,8 +169,7 @@ window.SnapLab = window.SnapLab || {};
   function setDefOn(objs, def) {
     objs.forEach(function (o) {
       if (!isMask(o)) return;
-      var r = maskRect(o);
-      var d = normalizeDef(def, r.w);
+      var d = normalizeDef(def);
       o.data.def = d;
       applyMaskLocks(o);
       if (d.type === 'icon' || d.type === 'image') o.angle = o.data.srcAngle || 0;
@@ -231,7 +231,7 @@ window.SnapLab = window.SnapLab || {};
       x0: p.x, y0: p.y,
       rect: new fabric.Rect({
         left: p.x, top: p.y, width: 1, height: 1,
-        fill: 'rgba(47,111,235,0.18)', stroke: '#2f6feb', strokeWidth: 1,
+        fill: 'rgba(31,95,122,0.16)', stroke: '#1F5F7A', strokeWidth: 1,
         strokeDashArray: [4, 3], selectable: false, evented: false, objectCaching: false
       })
     };
@@ -271,8 +271,9 @@ window.SnapLab = window.SnapLab || {};
     var p = centerPos();
     var o = new fabric.IText(text || '내용', {
       left: p.x, top: p.y, originX: 'center', originY: 'center',
-      fill: style.color, fontSize: style.size, fontFamily: 'Pretendard, "Malgun Gothic", sans-serif',
-      fontWeight: '700', stroke: '#000', strokeWidth: Math.max(0, style.size / 24),
+      fill: style.color, fontSize: style.size,
+      fontFamily: '"Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif',
+      fontWeight: '700', stroke: '#FFFFFF', strokeWidth: Math.max(0, style.size / 20),
       paintFirst: 'stroke'
     });
     o.data = { kind: 'annot' };
@@ -325,12 +326,12 @@ window.SnapLab = window.SnapLab || {};
     var size = Math.max(11, Math.round(ph * 0.032));
     var t = new fabric.Text(text, {
       left: pad, top: pad, fill: '#ffffff', fontSize: size,
-      fontFamily: 'Pretendard, "Malgun Gothic", sans-serif', fontWeight: '600'
+      fontFamily: '"Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif', fontWeight: '600'
     });
     var bg = new fabric.Rect({
       left: 0, top: 0,
       width: t.width + pad * 2, height: t.height + pad * 1.4,
-      fill: 'rgba(0,0,0,0.55)', rx: 4, ry: 4
+      fill: 'rgba(42,38,32,0.62)', rx: 4, ry: 4
     });
     t.set({ top: (bg.height - t.height) / 2 });
     var g = new fabric.Group([bg, t], { originX: 'right', originY: 'bottom' });
@@ -348,7 +349,7 @@ window.SnapLab = window.SnapLab || {};
     var o = new fabric.Rect({
       left: pw * 0.5, top: ph * 0.5, originX: 'center', originY: 'center',
       width: pw * 0.8, height: ph * 0.8,
-      fill: 'rgba(0,0,0,0.001)', stroke: '#ffcc00', strokeWidth: 2,
+      fill: 'rgba(0,0,0,0.001)', stroke: '#B4451C', strokeWidth: 2,
       strokeDashArray: [8, 5], strokeUniform: true, lockRotation: true
     });
     o.setControlsVisibility({ mtr: false });

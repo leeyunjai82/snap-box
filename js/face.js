@@ -9,37 +9,56 @@ window.SnapLab = window.SnapLab || {};
 
   var C = SnapLab.convert;
 
-  var TASKS_VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
-  var MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_detector/' +
-                  'blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
+  // 전부 셀프호스팅 — 실행 중 바깥으로 나가는 요청이 없다.
+  //
+  // 경로를 document.baseURI 기준으로 직접 푼다. classic script 안의 동적 import() 는
+  // 문서가 아니라 '그 스크립트 파일' 을 기준으로 상대경로를 풀기 때문에,
+  // './vendor/...' 라고 적으면 js/vendor/... 를 찾아가 404 가 난다.
+  // 절대경로('/vendor/...')는 하위 경로 배포(GitHub Pages)에서 깨지므로 쓰지 않는다.
+  function url(rel) { return new URL(rel, document.baseURI).href; }
+
+  var TASKS_VISION = url('vendor/tasks-vision/vision_bundle.mjs'); // 라이브러리
+  var WASM_DIR     = url('models');                                // wasm 런타임
+  var MODEL_URL    = url('models/blaze_face_short_range.tflite');  // 얼굴 찾기 모델
 
   var EXPAND = 0.15;      // 검출 박스 상하좌우 15% 확장
-  var MAX_COLS = 8;       // 픽셀화 블록은 박스 폭의 1/8보다 작아지지 않는다
+  var MAX_COLS = 8;       // 모자이크 블록은 박스 폭의 1/8보다 작아지지 않는다
+  var DEFAULT_COLS = 5;   // 기본값은 상한(8칸)보다 강하게 잡는다
 
   /* ── 기본 아이콘 (assets/icons/*.svg 와 동일 내용) ────────────────
    * 캔버스 오염(tainted canvas)을 피하려고 data: URI 로 내장한다.
    * file:// 로 열었을 때 로컬 SVG를 읽으면 toBlob()이 SecurityError 로 실패한다.
-   * assets/icons/*.svg 를 고치면 여기도 같이 고쳐야 한다.
+   * assets/icons/*.svg 를 고치면 여기도 같이 고쳐야 한다 (내용이 같아야 한다).
    */
   var ICON_SVG = {
-    smile: '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<circle cx="64" cy="64" r="56" fill="#FFD54F" stroke="#F4A81D" stroke-width="5"/>' +
-      '<circle cx="45" cy="52" r="8" fill="#5D4037"/><circle cx="83" cy="52" r="8" fill="#5D4037"/>' +
-      '<path d="M38 78a28 28 0 0 0 52 0" fill="none" stroke="#5D4037" stroke-width="8" stroke-linecap="round"/></svg>',
-    star: '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<path d="M64 10l16 34 37 5-27 26 7 37-33-18-33 18 7-37L11 49l37-5z" fill="#FFB300" stroke="#E08A00" stroke-width="5" stroke-linejoin="round"/></svg>',
-    heart: '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<path d="M64 112S14 80 14 46A28 28 0 0 1 64 28a28 28 0 0 1 50 18c0 34-50 66-50 66z" fill="#EF5350" stroke="#C62828" stroke-width="5" stroke-linejoin="round"/></svg>',
-    flower: '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<g fill="#F06292" stroke="#D81B60" stroke-width="4">' +
-      '<circle cx="64" cy="26" r="21"/><circle cx="100" cy="52" r="21"/><circle cx="86" cy="95" r="21"/>' +
-      '<circle cx="42" cy="95" r="21"/><circle cx="28" cy="52" r="21"/></g>' +
-      '<circle cx="64" cy="66" r="19" fill="#FFD54F" stroke="#F4A81D" stroke-width="4"/></svg>',
-    robot: '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<rect x="60" y="14" width="8" height="24" fill="#546E7A"/><circle cx="64" cy="12" r="9" fill="#4FC3F7" stroke="#0288D1" stroke-width="3"/>' +
-      '<rect x="22" y="36" width="84" height="72" rx="18" fill="#90A4AE" stroke="#546E7A" stroke-width="5"/>' +
-      '<circle cx="46" cy="66" r="11" fill="#263238"/><circle cx="82" cy="66" r="11" fill="#263238"/>' +
-      '<rect x="46" y="88" width="36" height="9" rx="4.5" fill="#263238"/></svg>'
+    person:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
+      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="64" cy="50" r="16" fill="#1F5F7A"/>' +
+      '<path d="M34 98a30 26 0 0 1 60 0z" fill="#1F5F7A"/></svg>',
+    smile:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
+      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="50" cy="54" r="6" fill="#1F5F7A"/><circle cx="78" cy="54" r="6" fill="#1F5F7A"/>' +
+      '<path d="M44 76q20 16 40 0" fill="none" stroke="#1F5F7A" stroke-width="7" stroke-linecap="round"/>' +
+      '</svg>',
+    star:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
+      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<path d="M64 28l10.5 22 24.5 3.5-17.5 17 4 24.5L64 83.5 42.5 95l4-24.5-17.5-17L53.5 50z" fill="#1F5F7A"/>' +
+      '</svg>',
+    flower:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
+      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<g fill="#1F5F7A"><circle cx="64" cy="40" r="15"/><circle cx="87" cy="57" r="15"/>' +
+      '<circle cx="78" cy="84" r="15"/><circle cx="50" cy="84" r="15"/><circle cx="41" cy="57" r="15"/>' +
+      '</g><circle cx="64" cy="64" r="11" fill="#FBFAF5"/></svg>',
+    shield:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
+      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<path d="M64 28l32 12v22c0 20-14 31-32 38-18-7-32-18-32-38V40z" fill="#1F5F7A"/>' +
+      '<path d="M52 66l9 9 17-18" fill="none" stroke="#FBFAF5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>'
   };
 
   var ICONS = Object.keys(ICON_SVG).map(function (id) {
@@ -70,8 +89,8 @@ window.SnapLab = window.SnapLab || {};
   function getDetector() {
     if (detectorPromise) return detectorPromise;
     detectorPromise = (function () {
-      return import(TASKS_VISION + '/vision_bundle.mjs').then(function (mod) {
-        return mod.FilesetResolver.forVisionTasks(TASKS_VISION + '/wasm').then(function (fileset) {
+      return import(TASKS_VISION).then(function (mod) {
+        return mod.FilesetResolver.forVisionTasks(WASM_DIR).then(function (fileset) {
           function create(delegate) {
             return mod.FaceDetector.createFromOptions(fileset, {
               baseOptions: { modelAssetPath: MODEL_URL, delegate: delegate },
@@ -139,11 +158,12 @@ window.SnapLab = window.SnapLab || {};
 
   /* ── 마스크 렌더 ────────────────────────────────────────── */
 
-  /* 박스 폭(미리보기 px)과 블록 슬라이더값으로 열 개수 결정.
-   * 열이 MAX_COLS 를 넘지 않으므로 블록 크기는 박스 폭의 1/8 이상이 보장된다. */
-  function colsFor(boxW, blockPx) {
-    var n = Math.round(boxW / Math.max(2, blockPx));
-    return Math.max(1, Math.min(MAX_COLS, n || 1));
+  /* 가로로 몇 칸을 낼지. MAX_COLS 를 넘지 않으므로
+   * "모자이크 블록은 박스 폭의 1/8 이상" 이라는 규칙이 언제나 지켜진다.
+   * 사용자가 고른 값이 없으면 기본 5칸. */
+  function clampCols(n) {
+    n = Math.round(+n || DEFAULT_COLS);
+    return Math.max(1, Math.min(MAX_COLS, n));
   }
 
   function clampSrc(src, x, y, w, h) {
@@ -237,7 +257,7 @@ window.SnapLab = window.SnapLab || {};
     if (def.type === 'blur') {
       drawBlur(g, src, rect, tw, th, def.blurPct || 45);
     } else {
-      drawPixelate(g, src, r, tw, th, def.cols || colsFor(rect.w, def.block || 14));
+      drawPixelate(g, src, r, tw, th, clampCols(def.cols));
     }
 
     if (def.type === 'icon') {
@@ -272,6 +292,10 @@ window.SnapLab = window.SnapLab || {};
     g.restore();
   }
 
+  /* 미리 데워 두기 — 첫 사진에서 기다리지 않게 한다.
+   * 실패하면 자동 찾기만 못 쓰고 나머지 기능은 그대로 돈다. */
+  function warmUp() { return getDetector().then(function () { return true; }); }
+
   SnapLab.ICONS = ICONS;
   SnapLab.face = {
     EXPAND: EXPAND,
@@ -281,8 +305,10 @@ window.SnapLab = window.SnapLab || {};
     preloadIcons: preloadIcons,
     customImage: customImage,
     detect: detect,
+    warmUp: warmUp,
     toBoxes: toBoxes,
-    colsFor: colsFor,
+    clampCols: clampCols,
+    DEFAULT_COLS: DEFAULT_COLS,
     buildPatch: buildPatch,
     ensureAssets: ensureAssets,
     bakeMask: bakeMask
