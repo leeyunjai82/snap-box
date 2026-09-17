@@ -20,6 +20,7 @@
 
 사진을 왼쪽에 끌어다 놓으면 (JPG · PNG · WEBP · HEIC) 바로 얼굴을 찾아 칸을 올립니다.
 못 찾은 얼굴은 사진 위를 끌어서 직접 칸을 그립니다.
+단체사진처럼 얼굴이 작게 찍혔으면 **찾는 범위**를 넓히세요 (얼굴 폭이 사진의 2.4%까지).
 
 - **1 얼굴 가리기** — 모자이크 · 흐리게 · 그림 · 내 이미지. **전체 한꺼번에 가리기**로 목록 전부 처리
 - **2 다듬기** — 자르기 · 돌리기 · 밝기·색 · 글자·네모·화살표 · 사진 아래 `사업명 | 학교명 | 날짜` 한 줄
@@ -34,7 +35,7 @@
 <summary>개발자용</summary>
 
 쓰는 라이브러리는 전부 이 저장소에 담겨 있습니다 —
-[@mediapipe/tasks-vision](https://www.npmjs.com/package/@mediapipe/tasks-vision) 0.10.14 ·
+[@mediapipe/tasks-vision](https://www.npmjs.com/package/@mediapipe/tasks-vision) 1.0.1 (BlazeFace 풀레인지) ·
 [fabric.js](https://fabricjs.com/) 5.3.0 ·
 [heic2any](https://github.com/alexcorvi/heic2any) 0.0.4 ·
 [jsPDF](https://github.com/parallax/jsPDF) 2.5.1 ·

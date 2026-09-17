@@ -19,7 +19,18 @@ window.SnapLab = window.SnapLab || {};
 
   var TASKS_VISION = url('vendor/tasks-vision/vision_bundle.mjs'); // 라이브러리
   var WASM_DIR     = url('models');                                // wasm 런타임
-  var MODEL_URL    = url('models/blaze_face_short_range.tflite');  // 얼굴 찾기 모델
+
+  /* 얼굴 찾기 모델 — BlazeFace 풀레인지를 먼저 쓴다.
+   *
+   * 단거리(blaze_face_short_range)는 2m 이내 근거리용이라 단체사진처럼
+   * 작게 찍힌 얼굴을 거의 못 잡는다. 같은 합성 장면에서 잰 검출률:
+   *   얼굴 폭이 사진의 5.6% → 단거리 0/10, 풀레인지 9/10
+   *   얼굴 폭이 사진의 3.6% → 단거리 0/10, 풀레인지 5/10
+   * 풀레인지는 tasks-vision 0.10.x 에서는 출력 앵커 수가 맞지 않아
+   * 디코딩에서 터진다. 1.0.1 이상이 필요하다.
+   * 만약을 대비해 실패하면 단거리로 내려간다. */
+  var MODEL_FULL  = url('models/blaze_face_full_range.tflite');
+  var MODEL_SHORT = url('models/blaze_face_short_range.tflite');
 
   var EXPAND = 0.15;      // 검출 박스 상하좌우 15% 확장
   var MAX_COLS = 8;       // 모자이크 블록은 박스 폭의 1/8보다 작아지지 않는다
@@ -91,14 +102,18 @@ window.SnapLab = window.SnapLab || {};
     detectorPromise = (function () {
       return import(TASKS_VISION).then(function (mod) {
         return mod.FilesetResolver.forVisionTasks(WASM_DIR).then(function (fileset) {
-          function create(delegate) {
+          function create(model, delegate) {
             return mod.FaceDetector.createFromOptions(fileset, {
-              baseOptions: { modelAssetPath: MODEL_URL, delegate: delegate },
+              baseOptions: { modelAssetPath: model, delegate: delegate },
               runningMode: 'IMAGE',
               minDetectionConfidence: 0.2   // 낮게 잡고 슬라이더로 걸러낸다
             });
           }
-          return create('GPU').catch(function () { return create('CPU'); });
+          // 풀레인지 GPU → 풀레인지 CPU → 단거리 GPU → 단거리 CPU
+          return create(MODEL_FULL, 'GPU')
+            .catch(function () { return create(MODEL_FULL, 'CPU'); })
+            .catch(function () { return create(MODEL_SHORT, 'GPU'); })
+            .catch(function () { return create(MODEL_SHORT, 'CPU'); });
         });
       });
     })();
@@ -106,8 +121,13 @@ window.SnapLab = window.SnapLab || {};
     return detectorPromise;
   }
 
-  /* source: HTMLCanvasElement | HTMLImageElement (축소본 권장)
-   * 반환: [{x,y,w,h,score,angle}] — source 픽셀 좌표계, 확장 전 */
+  /* source: HTMLCanvasElement | HTMLImageElement
+   * 반환: [{x,y,w,h,score,angle}] — source 픽셀 좌표계, 확장 전
+   *
+   * 주의: 모델은 입력을 정해진 작은 크기로 줄여서 본다. 그래서 큰 사진을
+   * 통째로 넣어도 해상도가 도움이 되지 않고, 얼굴이 '넣어 준 그림의' 폭에서
+   * 일정 비율 이상은 되어야 잡는다. 작게 찍힌 단체사진은 detectMulti() 로
+   * 잘라 넣어야 한다. */
   function detect(source) {
     return getDetector().then(function (det) {
       var res = det.detect(source);
@@ -129,6 +149,102 @@ window.SnapLab = window.SnapLab || {};
           score: score, angle: angle
         };
       });
+    });
+  }
+
+  /* ── 잘라 넣어 작은 얼굴까지 찾기 ────────────────────────
+   * 사진을 격자로 잘라 한 칸씩 검출기에 넣는다. 칸이 작을수록 얼굴이
+   * 칸 안에서 크게 잡히므로 작은 얼굴이 살아난다. 칸 경계에 걸린 얼굴은
+   * 칸을 20% 겹쳐 잘라 건지고, 겹쳐 나온 것은 NMS 로 하나로 합친다.
+   *
+   * 자를 원본은 축소본이 아니라 '원본 해상도' 를 준다. 같은 격자라도
+   * 원본에서 자른 칸이 더 선명해서 작은 얼굴을 더 건진다.
+   *
+   * 4000x3000 합성 장면(얼굴 10명)에서 잰 검출률 — 풀레인지 기준:
+   *   얼굴 폭  5.6%   3.6%   2.4%   1.6%
+   *   1        7/10   4/10   0/10   0/10
+   *   1,2     10/10  10/10   5/10   0/10
+   *   1,2,3   10/10  10/10   9/10   0/10
+   * 격자를 더 늘려도 1.6% 아래는 거의 못 잡고 오검출만 는다. */
+
+  var TILE_OVERLAP = 0.2;
+  var NMS_IOU = 0.3;
+
+  /* 찾는 범위 → 격자 사다리. 위에서부터 차례로 돌려 합친다. */
+  var RANGE_GRIDS = {
+    near:  [1],         /* 가까이 — 얼굴이 크게 찍힌 사진.        4000px 기준 ~0.3초 */
+    mid:   [1, 2],      /* 보통 — 얼굴 폭이 사진의 3.5% 까지.     ~0.9초 */
+    group: [1, 2, 3]    /* 단체사진 — 얼굴 폭이 사진의 2.4% 까지. ~2.0초 */
+  };
+
+  function iou(a, b) {
+    var x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y);
+    var x1 = Math.min(a.x + a.w, b.x + b.w), y1 = Math.min(a.y + a.h, b.y + b.h);
+    if (x1 <= x0 || y1 <= y0) return 0;
+    var i = (x1 - x0) * (y1 - y0);
+    return i / (a.w * a.h + b.w * b.h - i);
+  }
+
+  function nms(list, thr) {
+    var sorted = list.slice().sort(function (p, q) { return q.score - p.score; });
+    var keep = [];
+    sorted.forEach(function (d) {
+      for (var i = 0; i < keep.length; i++) if (iou(keep[i], d) > thr) return;
+      keep.push(d);
+    });
+    return keep;
+  }
+
+  function tilesOf(W, H, grid) {
+    if (grid <= 1) return [{ x: 0, y: 0, w: W, h: H }];
+    var cols = grid, rows = Math.max(1, Math.round(grid * H / W));
+    var tw = W / cols, th = H / rows;
+    var ox = tw * TILE_OVERLAP, oy = th * TILE_OVERLAP;
+    var out = [];
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var x0 = Math.max(0, Math.round(c * tw - ox));
+        var y0 = Math.max(0, Math.round(r * th - oy));
+        var x1 = Math.min(W, Math.round((c + 1) * tw + ox));
+        var y1 = Math.min(H, Math.round((r + 1) * th + oy));
+        if (x1 - x0 > 16 && y1 - y0 > 16) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+      }
+    }
+    return out;
+  }
+
+  function gridsFor(range) { return RANGE_GRIDS[range] || RANGE_GRIDS.mid; }
+
+  /* onStep(한 칸 끝날 때마다, 전체 칸 수) — 진행률 표시용 */
+  function detectMulti(source, range, onStep) {
+    var W = source.width || source.naturalWidth;
+    var H = source.height || source.naturalHeight;
+    var jobs = [];
+    gridsFor(range).forEach(function (g) {
+      tilesOf(W, H, g).forEach(function (t) { jobs.push(t); });
+    });
+
+    return getDetector().then(function () {
+      var all = [];
+      var i = 0;
+      function step() {
+        if (i >= jobs.length) return nms(all, NMS_IOU);
+        var t = jobs[i++];
+        if (onStep) onStep(i, jobs.length);
+        var input = source;
+        if (t.w !== W || t.h !== H) {
+          input = C.makeCanvas(t.w, t.h);
+          input.getContext('2d').drawImage(source, t.x, t.y, t.w, t.h, 0, 0, t.w, t.h);
+        }
+        return detect(input).catch(function () { return []; }).then(function (list) {
+          list.forEach(function (d) {
+            all.push({ x: d.x + t.x, y: d.y + t.y, w: d.w, h: d.h, score: d.score, angle: d.angle });
+          });
+          // 한 칸마다 한 번 숨을 돌려 화면이 멈춘 것처럼 보이지 않게 한다
+          return new Promise(function (r) { setTimeout(r, 0); }).then(step);
+        });
+      }
+      return step();
     });
   }
 
@@ -305,6 +421,9 @@ window.SnapLab = window.SnapLab || {};
     preloadIcons: preloadIcons,
     customImage: customImage,
     detect: detect,
+    detectMulti: detectMulti,
+    gridsFor: gridsFor,
+    RANGE_GRIDS: RANGE_GRIDS,
     warmUp: warmUp,
     toBoxes: toBoxes,
     clampCols: clampCols,

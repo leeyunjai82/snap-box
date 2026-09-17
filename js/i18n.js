@@ -67,9 +67,17 @@ var GL_I18N = {
   '기준값을 내리면 더 많이 찾고, 올리면 확실한 것만 찾습니다.':
     'Lower it to find more, raise it to keep only the sure ones.',
   '다시 찾기': 'Find again',
+  '찾는 범위': 'Search depth',
+  '가까이': 'Close-up',
+  '보통': 'Normal',
+  '단체사진': 'Group photo',
+  '얼굴이 작게 찍혔으면 범위를 넓히세요. 사진을 잘게 잘라 여러 번 보므로 그만큼 느려집니다. 보통은 얼굴 폭이 사진의 3.5%까지, 단체사진은 2.4%까지 찾습니다.':
+    'Widen it when faces are small in frame. The photo is cut into tiles and scanned several times, so it takes longer. Normal reaches faces down to 3.5% of the photo width, Group photo down to 2.4%.',
   '칸 그리기': 'Draw a box',
   '못 찾은 얼굴은 사진 위를 끌어서 칸을 직접 그립니다. 찾은 칸은 상하좌우로 15% 넓혀 둡니다.':
     'Drag on the photo to box a face it missed. Found boxes are widened by 15% on every side.',
+  '얼굴이 사진 너비의 2%보다 작으면 범위를 넓혀도 못 찾습니다. 그때는 칸을 직접 그려 주세요.':
+    'Faces smaller than 2% of the photo width are missed even at the widest depth. Draw those boxes yourself.',
   '가리는 방법': 'How to hide',
   '모자이크': 'Mosaic',
   '흐리게': 'Blur',
@@ -198,6 +206,7 @@ var GL_I18N = {
   '{ok}장 모두 했습니다': 'Done — {ok} photo(s)',
   '{ok}장 했습니다. {fail}장은 실패했습니다': 'Done {ok}, failed {fail}',
   '{n}장을 ZIP으로 저장했습니다': 'Saved {n} photo(s) as ZIP',
+  '얼굴을 찾는 중입니다 {i}/{n}': 'Looking for faces {i}/{n}',
   '체크한 {n}장을 뺄까요?': 'Remove the {n} checked photo(s)?'
 };
 

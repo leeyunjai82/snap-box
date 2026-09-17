@@ -28,6 +28,7 @@
     step: 'face',
     settings: {
       conf: 0.5,
+      range: 'mid',          // 찾는 범위 near | mid | group
       maskType: 'pixelate',
       cols: 5,
       blurPct: 60,
@@ -288,9 +289,13 @@
     if (!cur) return Promise.resolve();
     var item = cur.item;
     if (item.detTried && !force && item.detRaw) return rebuildDetectionMasks();
-    $('#detectState').textContent = T('얼굴을 찾는 중입니다');
-    return F.detect(cur.preview).then(function (raw) {
-      item.detRaw = raw;
+    var el = $('#detectState');
+    el.textContent = T('얼굴을 찾는 중입니다');
+    // 축소본이 아니라 원본을 넘긴다 — 잘라 넣을 때 원본이 더 잘 잡힌다
+    return F.detectMulti(cur.img, state.settings.range, function (i, n) {
+      if (n > 1) el.textContent = TF('얼굴을 찾는 중입니다 {i}/{n}', { i: i, n: n });
+    }).then(function (raw) {
+      item.detRaw = raw;            // 원본 좌표계
       item.detTried = true;
       setEngine('준비 완료', true);
       return rebuildDetectionMasks().then(function () {
@@ -310,7 +315,8 @@
   function rebuildDetectionMasks() {
     if (!cur) return Promise.resolve();
     E.masks().forEach(function (o) { if (o.data.fromDetect) E.canvas.remove(o); });
-    var boxes = F.toBoxes(cur.item.detRaw || [], state.settings.conf, 1, E.previewW, E.previewH);
+    // detRaw 는 원본 좌표계이므로 미리보기 배율을 곱한다
+    var boxes = F.toBoxes(cur.item.detRaw || [], state.settings.conf, cur.scale, E.previewW, E.previewH);
     var def = currentDef();
     return F.ensureAssets(def).then(function () {
       boxes.forEach(function (b) {
@@ -494,11 +500,9 @@
       .then(function () {
         return forEachItem(function (item) {
           return withImage(item, function (img) {
-            var ps = C.previewSize(item.width, item.height);
-            var prev = C.drawAdjusted(img, ps.w, ps.h, null);
-            return F.detect(prev).catch(function () { return []; }).then(function (raw) {
-              item.detRaw = raw; item.detTried = true;
-              var boxes = F.toBoxes(raw, state.settings.conf, 1 / ps.scale, item.width, item.height);
+            return F.detectMulti(img, state.settings.range).catch(function () { return []; }).then(function (raw) {
+              item.detRaw = raw; item.detTried = true;      // 원본 좌표계
+              var boxes = F.toBoxes(raw, state.settings.conf, 1, item.width, item.height);
               if (!boxes.length) return;
               var maskItems = boxes.map(function (b) {
                 var d = Object.assign({}, def);
@@ -959,6 +963,10 @@
       $('#confOut').value = state.settings.conf.toFixed(2);
     });
     $('#confSlider').addEventListener('change', function () { saveSettings(); rebuildDetectionMasks(); });
+    bindPick('#detectRange', function (v) {
+      state.settings.range = v; saveSettings();
+      if (cur) autoDetect(true);
+    });
     $('#btnRedetect').addEventListener('click', function () { autoDetect(true); });
     $('#btnDrawBox').addEventListener('click', function () {
       var on = !$('#btnDrawBox').classList.contains('on');
@@ -1146,6 +1154,7 @@
     var s = state.settings;
     $('#confSlider').value = Math.round(s.conf * 100);
     $('#confOut').value = s.conf.toFixed(2);
+    setPick('#detectRange', s.range);
     setPick('#maskType', s.maskType);
     $('#pixelCols').value = s.cols; $('#pixelColsOut').value = s.cols;
     $('#blurStrength').value = s.blurPct; $('#blurStrengthOut').value = s.blurPct;
