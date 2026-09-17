@@ -159,6 +159,7 @@
               status: 'wait',
               detRaw: null,
               detTried: false,
+              faceCount: null,      // 마지막으로 찾은 얼굴 수 (null = 아직 안 찾음)
               adjust: { b: 100, c: 100, s: 100 },
               history: [],
               stash: null,
@@ -203,8 +204,13 @@
       var nm = document.createElement('div');
       nm.className = 'nm'; nm.textContent = it.origName; nm.title = it.origName;
       var mt = document.createElement('div');
-      mt.className = 'mt' + (it.status === 'done' ? ' done' : it.status === 'err' ? ' bad' : '');
-      mt.textContent = T(STATUS_TEXT[it.status] || '대기') + ' · ' + it.width + '×' + it.height;
+      var noFace = (it.faceCount === 0);
+      mt.className = 'mt' + (noFace ? ' bad' : it.status === 'done' ? ' done' : it.status === 'err' ? ' bad' : '');
+      var tail = it.width + '×' + it.height;
+      if (it.faceCount === 0) tail = T('얼굴 못 찾음');
+      else if (it.faceCount > 0) tail = TF('얼굴 {n}', { n: it.faceCount });
+      mt.textContent = T(STATUS_TEXT[it.status] || '대기') + ' · ' + tail;
+      mt.title = it.width + '×' + it.height;
       meta.appendChild(nm); meta.appendChild(mt);
 
       var idx = document.createElement('span');
@@ -297,6 +303,8 @@
     }).then(function (raw) {
       item.detRaw = raw;            // 원본 좌표계
       item.detTried = true;
+      item.faceCount = F.toBoxes(raw, state.settings.conf, 1, item.width, item.height).length;
+      renderQueue();
       setEngine('준비 완료', true);
       return rebuildDetectionMasks().then(function () {
         var n = E.masks().filter(function (o) { return o.data.fromDetect; }).length;
@@ -462,7 +470,8 @@
   }
 
   /* ── 한꺼번에 처리 ─────────────────────────────────────── */
-  function forEachItem(fn, label) {
+  /* quiet: 부르는 쪽이 자기 문구로 알릴 때는 기본 완료 토스트를 내지 않는다 */
+  function forEachItem(fn, label, quiet) {
     var items = state.items.slice();
     if (!items.length) { toast(T('사진을 먼저 넣어 주세요')); return Promise.resolve({ ok: 0, total: 0 }); }
     var back = Math.max(0, state.index);
@@ -485,8 +494,8 @@
       setTimeout(function () { progress(null); }, 600);
       busy(false);
       renderQueue();
-      toast(fail ? TF('{ok}장 했습니다. {fail}장은 실패했습니다', { ok: ok, fail: fail })
-                 : TF('{ok}장 모두 했습니다', { ok: ok }));
+      if (fail) toast(TF('{ok}장 했습니다. {fail}장은 실패했습니다', { ok: ok, fail: fail }));
+      else if (!quiet) toast(TF('{ok}장 모두 했습니다', { ok: ok }));
       return (state.items.length ? selectItem(Math.min(back, state.items.length - 1)) : Promise.resolve())
         .then(function () { return { ok: ok, total: items.length }; });
     });
@@ -495,7 +504,20 @@
   function batchAutoMask() {
     var def = currentDef();
     if (def.type === 'image' && !def.customURL) { toast(T('쓸 이미지를 먼저 골라 주세요')); return Promise.resolve(); }
-    return flushPending()
+
+    // 열려 있는 사진에 '자동으로 찾아 놓은 칸' 만 있으면 그냥 버린다.
+    // 일괄이 어차피 다시 찾아 굽기 때문에, 여기서 구워 두면 같은 사진을
+    // 두 번 굽게 되고(엉뚱한 곳에 덧칠될 수 있다) 가린 얼굴 수도 틀어진다.
+    // 사람이 직접 그린 칸·주석·색 보정이 섞여 있으면 그건 먼저 구워서 지킨다.
+    var onlyAuto = !!cur &&
+      E.masks().length > 0 &&
+      E.masks().every(function (o) { return o.data.fromDetect; }) &&
+      E.annots().length === 0 &&
+      C.isNeutral(state.settings.adjLive);
+
+    var prep = onlyAuto ? (dropCurrent(), Promise.resolve()) : flushPending();
+
+    return prep
       .then(function () { return F.ensureAssets(def); })
       .then(function () {
         return forEachItem(function (item) {
@@ -503,6 +525,7 @@
             return F.detectMulti(img, state.settings.range).catch(function () { return []; }).then(function (raw) {
               item.detRaw = raw; item.detTried = true;      // 원본 좌표계
               var boxes = F.toBoxes(raw, state.settings.conf, 1, item.width, item.height);
+              item.faceCount = boxes.length;
               if (!boxes.length) return;
               var maskItems = boxes.map(function (b) {
                 var d = Object.assign({}, def);
@@ -521,7 +544,15 @@
               });
             });
           });
-        }, T('얼굴 가리기'));
+        }, T('얼굴 가리기'), true);
+      })
+      .then(function () {
+        // 검출기가 다 잡아 주지는 않는다. 몇 개를 가렸는지 알려 주고 확인을 권한다.
+        var n = state.items.reduce(function (a, it) { return a + (it.faceCount || 0); }, 0);
+        var blank = state.items.filter(function (it) { return it.faceCount === 0; }).length;
+        toast(blank
+          ? TF('얼굴 {n}개를 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요', { n: n, b: blank })
+          : TF('얼굴 {n}개를 가렸습니다. 놓친 얼굴이 없는지 넘겨 보며 확인해 주세요', { n: n }));
       });
   }
 

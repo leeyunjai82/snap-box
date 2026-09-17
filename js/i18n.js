@@ -207,6 +207,12 @@ var GL_I18N = {
   '{ok}장 했습니다. {fail}장은 실패했습니다': 'Done {ok}, failed {fail}',
   '{n}장을 ZIP으로 저장했습니다': 'Saved {n} photo(s) as ZIP',
   '얼굴을 찾는 중입니다 {i}/{n}': 'Looking for faces {i}/{n}',
+  '얼굴 {n}': '{n} face(s)',
+  '얼굴 못 찾음': 'no face found',
+  '얼굴 {n}개를 가렸습니다. 놓친 얼굴이 없는지 넘겨 보며 확인해 주세요':
+    'Hid {n} face(s). Flip through the photos and check nothing was missed',
+  '얼굴 {n}개를 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요':
+    'Hid {n} face(s). {b} photo(s) had no face found — please check them',
   '체크한 {n}장을 뺄까요?': 'Remove the {n} checked photo(s)?'
 };
 
