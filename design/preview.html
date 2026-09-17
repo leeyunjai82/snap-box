@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>snap-box 컴포넌트 미리보기</title>
-<link rel="icon" type="image/png" href="../assets/img/favicon.png">
+<title>업무 도구 킷 — 컴포넌트 미리보기</title>
+<link rel="icon" type="image/svg+xml" href="../assets/img/snap-box-mark.svg">
 <link rel="stylesheet" href="../assets/fonts/pretendard.css">
 <link rel="stylesheet" href="../css/all.min.css">
-<link rel="stylesheet" href="../css/maker-ui.css">
+<link rel="stylesheet" href="../css/maker-tool.css">
 <link rel="stylesheet" href="../css/app.css">
 <style>
   body{height:auto;overflow:auto}
@@ -17,47 +17,73 @@
   .chip{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--ink3);font-weight:700}
   .chip b{display:block;width:34px;height:22px;border-radius:5px;border:1px solid var(--line)}
   .note{font-size:11px;color:var(--ink3);margin:2px 0 10px}
+  .markrow{display:flex;gap:16px;flex-wrap:wrap}
+  .markrow figure{text-align:center}
+  .markrow img{width:64px;height:64px;display:block}
+  .markrow figcaption{font-size:11px;color:var(--ink3);font-weight:700;margin-top:6px}
+  .marksizes{display:flex;align-items:flex-end;gap:8px;background:var(--panel2);
+    border:1px solid var(--line-soft);border-radius:var(--r-m);padding:12px}
+  .marksizes span{font-size:10px;color:var(--ink3);font-weight:700;margin-right:10px}
 </style>
 </head>
 <body>
 
 <header data-tab="preview.html">
-  <h1><img src="../assets/img/maker-logo.png" alt=""><span class="brand-txt">snap-box</span></h1>
-  <span class="brand-sub">컴포넌트 미리보기</span>
+  <h1><img src="../assets/img/snap-box-mark.svg" alt=""><span class="brand-txt">snap-box</span></h1>
+  <span class="brand-sub">업무 도구 킷 · 컴포넌트 미리보기</span>
   <span style="flex:1"></span>
   <span class="badge ok">준비 완료</span>
   <button class="hbtn" type="button"><i class="fa-solid fa-expand"></i></button>
   <button id="langToggle" type="button">EN</button>
 </header>
 
-<div id="steps">
-  <button class="stp done"><span class="cir">1</span>지나온 단계</button>
-  <div class="stpline"></div>
-  <button class="stp on"><span class="cir">2</span>지금 단계</button>
-  <div class="stpline"></div>
-  <button class="stp"><span class="cir">3</span>앞으로 올 단계</button>
-</div>
+<nav class="tabbar">
+  <button class="tab done"><span class="n">1</span>끝난 작업</button>
+  <button class="tab on"><span class="n">2</span>지금 작업</button>
+  <button class="tab"><span class="n">3</span>앞으로 할 작업</button>
+</nav>
 
 <div class="mk-main">
 
   <section class="pan">
-    <div class="ph"><i class="fa-solid fa-palette"></i>색 토큰<span class="ph-count num">12</span></div>
+    <div class="ph"><i class="fa-solid fa-palette"></i>색 토큰<span class="ph-count num">14</span></div>
     <div class="pb">
       <p class="note">새 색을 만들지 않습니다. 아래 토큰만 씁니다.</p>
       <div class="sw">
-        <span class="chip"><b style="background:var(--paper)"></b>--paper</span>
+        <span class="chip"><b style="background:var(--bg)"></b>--bg</span>
         <span class="chip"><b style="background:var(--panel)"></b>--panel</span>
         <span class="chip"><b style="background:var(--panel2)"></b>--panel2</span>
         <span class="chip"><b style="background:var(--line-soft)"></b>--line-soft</span>
         <span class="chip"><b style="background:var(--line)"></b>--line</span>
         <span class="chip"><b style="background:var(--line-d)"></b>--line-d</span>
         <span class="chip"><b style="background:var(--ink)"></b>--ink</span>
+        <span class="chip"><b style="background:var(--ink2)"></b>--ink2</span>
         <span class="chip"><b style="background:var(--ink3)"></b>--ink3</span>
         <span class="chip"><b style="background:var(--acc)"></b>--acc</span>
         <span class="chip"><b style="background:var(--acc-ink)"></b>--acc-ink</span>
         <span class="chip"><b style="background:var(--acc-soft)"></b>--acc-soft</span>
         <span class="chip"><b style="background:var(--ok)"></b>--ok</span>
         <span class="chip"><b style="background:var(--warn)"></b>--warn</span>
+      </div>
+      <p class="note">교육용 킷(sense-lab)과 <b>이름은 같고 값만 다릅니다.</b>
+        브랜드 남색 <code>--acc #1F5F7A</code> 는 두 킷이 같은 값을 씁니다.</p>
+    </div>
+  </section>
+
+  <section class="pan">
+    <div class="ph"><i class="fa-solid fa-shapes"></i>서비스 마크</div>
+    <div class="pb">
+      <p class="note">바탕 사각형과 흰 판은 고정, 글리프만 서비스마다 다릅니다. 색은 남색 하나(보조 톤은 opacity .38).</p>
+      <div class="markrow">
+        <figure><img src="../assets/img/snap-box-mark.svg" alt=""><figcaption>snap-box</figcaption></figure>
+        <figure><img src="mark/clip-box-mark.svg" alt=""><figcaption>clip-box (본보기)</figcaption></figure>
+      </div>
+      <div class="st" style="margin-top:12px">작은 크기에서 형태가 남는지</div>
+      <div class="marksizes">
+        <img src="../assets/img/snap-box-mark.svg" style="height:16px" alt=""><span>16</span>
+        <img src="../assets/img/snap-box-mark.svg" style="height:26px" alt=""><span>26</span>
+        <img src="../assets/img/snap-box-mark.svg" style="height:40px" alt=""><span>40</span>
+        <img src="../assets/img/snap-box-mark.svg" style="height:64px" alt=""><span>64</span>
       </div>
     </div>
   </section>
@@ -175,7 +201,14 @@
   </div>
 </div>
 
-<div id="toast" class="on">토스트 — 2.4초 뒤 사라집니다</div>
+<!-- 토스트는 실제로는 화면 아래 고정이지만, 이 장에서는 내용을 가리지 않게 제자리에 둔다 -->
+<section class="pan" style="margin:0 10px 10px">
+  <div class="ph"><i class="fa-solid fa-comment"></i>토스트</div>
+  <div class="pb">
+    <p class="note">화면 가운데 아래에 뜨고 2.4초 뒤 사라집니다. 아래 작업 줄을 가리지 않게 한 단 위에 뜹니다.</p>
+    <div class="toast on" style="position:static;transform:none;display:inline-block;max-width:none">처리했습니다</div>
+  </div>
+</section>
 
 <script src="../js/i18n.js"></script>
 <script src="../js/convert.js"></script>

@@ -33,31 +33,31 @@ window.SnapLab = window.SnapLab || {};
   var ICON_SVG = {
     person:
       '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="64" cy="64" r="58" fill="#FFFFFF" stroke="#1C2024" stroke-width="5"/>' +
       '<circle cx="64" cy="50" r="16" fill="#1F5F7A"/>' +
       '<path d="M34 98a30 26 0 0 1 60 0z" fill="#1F5F7A"/></svg>',
     smile:
       '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="64" cy="64" r="58" fill="#FFFFFF" stroke="#1C2024" stroke-width="5"/>' +
       '<circle cx="50" cy="54" r="6" fill="#1F5F7A"/><circle cx="78" cy="54" r="6" fill="#1F5F7A"/>' +
       '<path d="M44 76q20 16 40 0" fill="none" stroke="#1F5F7A" stroke-width="7" stroke-linecap="round"/>' +
       '</svg>',
     star:
       '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="64" cy="64" r="58" fill="#FFFFFF" stroke="#1C2024" stroke-width="5"/>' +
       '<path d="M64 28l10.5 22 24.5 3.5-17.5 17 4 24.5L64 83.5 42.5 95l4-24.5-17.5-17L53.5 50z" fill="#1F5F7A"/>' +
       '</svg>',
     flower:
       '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="64" cy="64" r="58" fill="#FFFFFF" stroke="#1C2024" stroke-width="5"/>' +
       '<g fill="#1F5F7A"><circle cx="64" cy="40" r="15"/><circle cx="87" cy="57" r="15"/>' +
       '<circle cx="78" cy="84" r="15"/><circle cx="50" cy="84" r="15"/><circle cx="41" cy="57" r="15"/>' +
-      '</g><circle cx="64" cy="64" r="11" fill="#FBFAF5"/></svg>',
+      '</g><circle cx="64" cy="64" r="11" fill="#FFFFFF"/></svg>',
     shield:
       '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">' +
-      '<circle cx="64" cy="64" r="58" fill="#FBFAF5" stroke="#4A3F2E" stroke-width="5"/>' +
+      '<circle cx="64" cy="64" r="58" fill="#FFFFFF" stroke="#1C2024" stroke-width="5"/>' +
       '<path d="M64 28l32 12v22c0 20-14 31-32 38-18-7-32-18-32-38V40z" fill="#1F5F7A"/>' +
-      '<path d="M52 66l9 9 17-18" fill="none" stroke="#FBFAF5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M52 66l9 9 17-18" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</svg>'
   };
 

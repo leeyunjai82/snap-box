@@ -45,13 +45,18 @@
 | [jsPDF](https://github.com/parallax/jsPDF) | 2.5.1 | PDF · 붙임 사진 대지 | `vendor/jspdf/` |
 | [JSZip](https://stuk.github.io/jszip/) | 3.10.1 | 전체 내려받기 | `vendor/jszip/` |
 | [Pretendard](https://github.com/orioncactus/pretendard) | — | 본문 글꼴 | `assets/fonts/` |
-| [Font Awesome Free](https://fontawesome.com/) | 6.2.0 | 아이콘 | `css/all.min.css`, `webfonts/` |
+| [Font Awesome Free](https://fontawesome.com/) | 6.2.0 | 아이콘 (Solid만) | `css/all.min.css`, `webfonts/` |
 
-얼굴 대체 그림(`assets/icons/`)은 자체 제작입니다.
+얼굴 대체 그림(`assets/icons/`)과 서비스 마크(`assets/img/snap-box-mark.svg`)는 자체 제작입니다.
 
 ## 디자인
 
-`themakerrobot/sense-lab` 의 공통 디자인 킷을 그대로 씁니다.
+**업무 도구 킷**([`css/maker-tool.css`](css/maker-tool.css))을 씁니다.
+`themakerrobot/sense-lab` 의 교육용 킷과 **같은 집안, 다른 킷**입니다 —
+브랜드 남색·Pretendard·헤더 구성·클래스 이름·토큰 이름은 그대로 물려받고,
+학습지 장식(미색 종이·점무늬·갈색 괘선·명조 서비스명·원형 단계 번호)은 업무 화면에 맞게 바꿨습니다.
+토큰 **이름**이 같아서 서비스는 CSS 한 줄만 바꿔 결을 고릅니다.
+
 자매 서비스(clip-box 등)를 만들 때의 기준은 [`design/README.md`](design/README.md) 에 있고,
 컴포넌트 실물은 [`design/preview.html`](design/preview.html) 을 서버로 띄워서 봅니다.
 

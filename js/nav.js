@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 // 각 페이지의 <header data-tab="..."> 를 sense-lab 의 헤더 마크업
 // (h1 + .navlink + spacer + #engine + .hbtn) 과 같은 구조로 채운다.
-// 클래스 이름·DOM 구조를 바꾸지 말 것 — css/maker-ui.css 가 그대로 입혀진다.
+// 클래스 이름·DOM 구조를 바꾸지 말 것 — css/maker-tool.css 가 그대로 입혀진다.
 //
 // 자매 서비스(clip-box 등)는 이 파일을 복사해 BRAND 와 TABS 만 고쳐 쓴다.
 // 다른 서비스로 가는 링크는 넣지 않는다 — 배포 경로가 서로 달라
@@ -13,7 +13,8 @@
   'use strict';
 
   var BRAND = 'snap-box';
-  var TABS = [];   // 하위 페이지가 생기면 { href, label } 을 채운다
+  var MARK  = 'assets/img/snap-box-mark.svg';   // design/README.md §4 의 마크 규격
+  var TABS  = [];  // 하위 페이지가 생기면 { href, label } 을 채운다
 
   var header = document.querySelector('header[data-tab]');
   if (!header) return;
@@ -21,7 +22,7 @@
 
   var h1 = document.createElement('h1');
   var logo = document.createElement('img');
-  logo.src = 'assets/img/maker-logo.png';
+  logo.src = MARK;
   logo.alt = '';
   h1.appendChild(logo);
   var txt = document.createElement('span');

@@ -557,7 +557,7 @@
     var tw = g.measureText(text).width;
     var bw = tw + pad * 2, bh = size + pad * 1.4;
     var bx = canvas.width - pad - bw, by = canvas.height - pad - bh;
-    g.fillStyle = 'rgba(42,38,32,0.62)';
+    g.fillStyle = 'rgba(28,32,36,0.62)';   // --ink 62%
     if (g.roundRect) { g.beginPath(); g.roundRect(bx, by, bw, bh, 4); g.fill(); }
     else g.fillRect(bx, by, bw, bh);
     g.fillStyle = '#ffffff';
@@ -806,7 +806,7 @@
     if (state.step !== name) { E.cancelCrop(); setCropUI(false); }
     state.step = name;
     var at = STEPS.indexOf(name);
-    $$('#steps .stp').forEach(function (b, i) {
+    $$('#toolTabs .tab').forEach(function (b, i) {
       b.classList.toggle('on', i === at);
       b.classList.toggle('done', i < at);
     });
@@ -913,7 +913,7 @@
 
   /* ── 이벤트 연결 ───────────────────────────────────────── */
   function bindUI() {
-    $$('#steps .stp').forEach(function (b) {
+    $$('#toolTabs .tab').forEach(function (b) {
       b.addEventListener('click', function () { goStep(b.dataset.step); });
     });
 

@@ -5,26 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>snap-box — 사진 정리</title>
 <meta name="description" content="보고서에 넣을 사진의 얼굴 가림·편집·용량 정리를 이 브라우저 안에서 끝냅니다.">
-<link rel="icon" type="image/png" href="assets/img/favicon.png">
-<meta name="theme-color" content="#FBF7EF">
+<link rel="icon" type="image/svg+xml" href="assets/img/snap-box-mark.svg">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/img/icon-64.png">
+<link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<meta name="theme-color" content="#F1F3F5">
 <link rel="stylesheet" href="assets/fonts/pretendard.css">
 <link rel="stylesheet" href="css/all.min.css">
-<link rel="stylesheet" href="css/maker-ui.css">
+<link rel="stylesheet" href="css/maker-tool.css">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 
 <header data-tab="index.html"></header>
 
-<div id="steps">
-  <button class="stp on" data-step="face"><span class="cir">1</span>얼굴 가리기</button>
-  <div class="stpline"></div>
-  <button class="stp" data-step="edit"><span class="cir">2</span>다듬기</button>
-  <div class="stpline"></div>
-  <button class="stp" data-step="conv"><span class="cir">3</span>크기·용량</button>
-  <div class="stpline"></div>
-  <button class="stp" data-step="out"><span class="cir">4</span>내보내기</button>
-</div>
+<nav class="tabbar" id="toolTabs">
+  <button class="tab on" data-step="face"><span class="n">1</span>얼굴 가리기</button>
+  <button class="tab" data-step="edit"><span class="n">2</span>다듬기</button>
+  <button class="tab" data-step="conv"><span class="n">3</span>크기·용량</button>
+  <button class="tab" data-step="out"><span class="n">4</span>내보내기</button>
+</nav>
 
 <div class="mk-main">
 

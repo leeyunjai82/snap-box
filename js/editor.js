@@ -32,9 +32,9 @@ window.SnapLab = window.SnapLab || {};
       uniformScaling: false
     });
     fabric.Object.prototype.transparentCorners = false;
-    // 색은 css/maker-ui.css 토큰과 같은 값 — 남색 펜(--acc), 미색 종이(--panel2)
-    fabric.Object.prototype.cornerColor = '#1F5F7A';
-    fabric.Object.prototype.cornerStrokeColor = '#FBFAF5';
+    // 색은 css/maker-tool.css 토큰과 같은 값 — --acc / --panel / --warn
+    fabric.Object.prototype.cornerColor = '#1F5F7A';      /* --acc */
+    fabric.Object.prototype.cornerStrokeColor = '#FFFFFF'; /* --panel */
     fabric.Object.prototype.borderColor = '#1F5F7A';
     fabric.Object.prototype.cornerSize = 10;
     fabric.Object.prototype.padding = 0;
@@ -82,17 +82,18 @@ window.SnapLab = window.SnapLab || {};
     canvas.requestRenderAll();
   }
 
+  /* 캔버스를 '화면에 보이는 사진 크기' 로 맞춘다.
+   * 무대 크기로 잡고 안에서 중앙 정렬하면, 캔버스에 준 테두리·그림자가
+   * 사진이 아니라 무대 전체를 감싸 버린다. 여백은 바깥 flex 가 만든다. */
+  var FIT_PAD = 16;
+
   function fitView() {
     if (!canvas || !wrap || !pw) return;
-    var cw = wrap.clientWidth, ch = wrap.clientHeight;
-    if (!cw || !ch) return;
+    var cw = wrap.clientWidth - FIT_PAD, ch = wrap.clientHeight - FIT_PAD;
+    if (cw <= 0 || ch <= 0) return;
     var z = Math.min(cw / pw, ch / ph);
-    canvas.setDimensions({ width: cw, height: ch });
-    canvas.setZoom(z);
-    var vt = canvas.viewportTransform;
-    vt[4] = (cw - pw * z) / 2;
-    vt[5] = (ch - ph * z) / 2;
-    canvas.setViewportTransform(vt);
+    canvas.setDimensions({ width: Math.round(pw * z), height: Math.round(ph * z) });
+    canvas.setViewportTransform([z, 0, 0, z, 0, 0]);
     canvas.requestRenderAll();
   }
 
@@ -102,7 +103,7 @@ window.SnapLab = window.SnapLab || {};
     canvas.remove.apply(canvas, canvas.getObjects().slice());
     canvas.backgroundImage = null;
     srcCanvas = null; pw = 0; ph = 0;
-    canvas.setDimensions({ width: wrap ? wrap.clientWidth : 10, height: wrap ? wrap.clientHeight : 10 });
+    canvas.setDimensions({ width: 1, height: 1 });
     canvas.requestRenderAll();
   }
 
@@ -331,7 +332,7 @@ window.SnapLab = window.SnapLab || {};
     var bg = new fabric.Rect({
       left: 0, top: 0,
       width: t.width + pad * 2, height: t.height + pad * 1.4,
-      fill: 'rgba(42,38,32,0.62)', rx: 4, ry: 4
+      fill: 'rgba(28,32,36,0.62)', rx: 4, ry: 4   /* --ink 62% */
     });
     t.set({ top: (bg.height - t.height) / 2 });
     var g = new fabric.Group([bg, t], { originX: 'right', originY: 'bottom' });
