@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>snap-box</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f6feb'/%3E%3Ccircle cx='16' cy='17' r='6' fill='%23fff'/%3E%3Crect x='10' y='6' width='12' height='4' rx='2' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <span class="logo"></span>
+    <strong>snap-box</strong>
+    <span class="tagline" data-i18n="app.tagline"></span>
+  </div>
+  <div class="spacer"></div>
+  <div id="privacyNote" class="privacy">
+    <span data-i18n="app.privacy"></span>
+    <button id="privacyClose" class="linkbtn" title="닫기">&times;</button>
+  </div>
+</header>
+
+<main id="layout">
+
+  <!-- ── 좌: 파일 큐 ───────────────────────────────── -->
+  <section id="queuePane">
+    <div class="pane-head">
+      <span data-i18n="queue.title"></span>
+      <span id="queueCount" class="badge">0</span>
+    </div>
+    <div id="dropZone">
+      <p data-i18n="queue.drop"></p>
+      <button id="btnPick" class="btn primary" data-i18n="queue.pick"></button>
+      <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif" hidden>
+    </div>
+    <ul id="queueList"></ul>
+    <div class="pane-foot">
+      <button id="btnClearQueue" class="btn tiny ghost" data-i18n="queue.clear"></button>
+      <button id="btnRemoveSel" class="btn tiny ghost" data-i18n="queue.removeSel"></button>
+    </div>
+  </section>
+
+  <!-- ── 중: 캔버스 ────────────────────────────────── -->
+  <section id="stagePane">
+    <div id="stageHead">
+      <span id="stageName" class="ellip" data-i18n="stage.empty"></span>
+      <span id="stageDims" class="dim"></span>
+      <span class="spacer"></span>
+      <span id="detectState" class="dim"></span>
+    </div>
+    <div id="stageWrap">
+      <canvas id="c"></canvas>
+      <div id="stageEmpty" data-i18n="stage.hint"></div>
+    </div>
+  </section>
+
+  <!-- ── 우: 도구 패널 ─────────────────────────────── -->
+  <section id="toolPane">
+    <nav id="tabs">
+      <button class="tab active" data-tab="face"   data-i18n="tab.face"></button>
+      <button class="tab"        data-tab="edit"   data-i18n="tab.edit"></button>
+      <button class="tab"        data-tab="conv"   data-i18n="tab.conv"></button>
+      <button class="tab"        data-tab="out"    data-i18n="tab.out"></button>
+    </nav>
+
+    <div class="tabbody" id="tab-face">
+      <div class="grp">
+        <div class="grp-title" data-i18n="face.detect"></div>
+        <label class="row"><span data-i18n="face.conf"></span>
+          <input type="range" id="confSlider" min="10" max="90" step="5" value="50">
+          <output id="confOut">0.50</output>
+        </label>
+        <div class="row">
+          <button id="btnRedetect" class="btn" data-i18n="face.redetect"></button>
+          <button id="btnDrawBox" class="btn toggle on" data-i18n="face.drawbox"></button>
+        </div>
+        <p class="hint" data-i18n="face.hint"></p>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title" data-i18n="face.mode"></div>
+        <div class="seg" id="maskType">
+          <button class="seg-b active" data-v="pixelate" data-i18n="face.pixelate"></button>
+          <button class="seg-b" data-v="blur" data-i18n="face.blur"></button>
+          <button class="seg-b" data-v="icon" data-i18n="face.icon"></button>
+          <button class="seg-b" data-v="image" data-i18n="face.image"></button>
+        </div>
+
+        <label class="row opt" data-for="pixelate"><span data-i18n="face.block"></span>
+          <input type="range" id="pixelBlock" min="4" max="48" step="2" value="14">
+          <output id="pixelBlockOut">14</output>
+        </label>
+        <label class="row opt" data-for="blur" hidden><span data-i18n="face.blurAmt"></span>
+          <input type="range" id="blurStrength" min="10" max="100" step="5" value="45">
+          <output id="blurStrengthOut">45</output>
+        </label>
+        <div class="opt" data-for="icon" hidden>
+          <div id="iconPicker" class="iconpicker"></div>
+        </div>
+        <div class="opt" data-for="image" hidden>
+          <input type="file" id="customMaskFile" accept="image/png,image/jpeg,image/webp">
+          <div id="customMaskPrev" class="custprev"></div>
+        </div>
+
+        <div class="row">
+          <button id="btnApplyToSelected" class="btn" data-i18n="face.toSelected"></button>
+          <button id="btnApplyToAll" class="btn" data-i18n="face.toAll"></button>
+        </div>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title" data-i18n="face.boxes"></div>
+        <div class="row">
+          <button id="btnDelBox" class="btn ghost" data-i18n="face.delBox"></button>
+          <button id="btnClearBoxes" class="btn ghost" data-i18n="face.clearBoxes"></button>
+        </div>
+        <p class="hint" data-i18n="face.delHint"></p>
+      </div>
+    </div>
+
+    <div class="tabbody" id="tab-edit" hidden>
+      <div class="grp">
+        <div class="grp-title" data-i18n="edit.geom"></div>
+        <div class="row">
+          <button id="btnRotate" class="btn" data-i18n="edit.rotate"></button>
+          <button id="btnFlip" class="btn" data-i18n="edit.flip"></button>
+        </div>
+        <div class="row">
+          <button id="btnCropStart" class="btn" data-i18n="edit.cropStart"></button>
+          <button id="btnCropApply" class="btn primary" data-i18n="edit.cropApply" hidden></button>
+          <button id="btnCropCancel" class="btn ghost" data-i18n="edit.cropCancel" hidden></button>
+        </div>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title" data-i18n="edit.adjust"></div>
+        <label class="row"><span data-i18n="edit.bright"></span>
+          <input type="range" id="adjBright" min="50" max="150" step="1" value="100"><output id="adjBrightOut">100</output></label>
+        <label class="row"><span data-i18n="edit.contrast"></span>
+          <input type="range" id="adjContrast" min="50" max="150" step="1" value="100"><output id="adjContrastOut">100</output></label>
+        <label class="row"><span data-i18n="edit.sat"></span>
+          <input type="range" id="adjSat" min="0" max="200" step="1" value="100"><output id="adjSatOut">100</output></label>
+        <button id="btnAdjReset" class="btn tiny ghost" data-i18n="edit.reset"></button>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title" data-i18n="edit.annot"></div>
+        <div class="row">
+          <button id="btnAddText" class="btn" data-i18n="edit.text"></button>
+          <button id="btnAddRect" class="btn" data-i18n="edit.rect"></button>
+          <button id="btnAddArrow" class="btn" data-i18n="edit.arrow"></button>
+        </div>
+        <div class="row">
+          <label class="mini"><span data-i18n="edit.color"></span><input type="color" id="annotColor" value="#ff3b30"></label>
+          <label class="mini"><span data-i18n="edit.width"></span><input type="number" id="annotWidth" min="1" max="30" value="4"></label>
+          <label class="mini"><span data-i18n="edit.size"></span><input type="number" id="annotSize" min="10" max="200" value="36"></label>
+        </div>
+        <label class="row"><span data-i18n="edit.logo"></span><input type="file" id="logoFile" accept="image/png,image/svg+xml,image/jpeg"></label>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title" data-i18n="edit.stamp"></div>
+        <label class="row"><span data-i18n="edit.project"></span><input type="text" id="stampProject" placeholder="사업명"></label>
+        <label class="row"><span data-i18n="edit.school"></span><input type="text" id="stampSchool" placeholder="학교명"></label>
+        <label class="row"><span data-i18n="edit.date"></span><input type="date" id="stampDate"></label>
+        <div class="row">
+          <button id="btnAddStamp" class="btn" data-i18n="edit.addStamp"></button>
+          <button id="btnStampAll" class="btn" data-i18n="edit.stampAll"></button>
+        </div>
+        <p class="hint" data-i18n="edit.stampHint"></p>
+      </div>
+    </div>
+
+    <div class="tabbody" id="tab-conv" hidden>
+      <div class="grp">
+        <div class="grp-title" data-i18n="conv.resize"></div>
+        <label class="row"><span data-i18n="conv.long"></span><input type="number" id="resizeLong" min="200" max="8000" step="100" value="1600"></label>
+        <label class="row"><span data-i18n="conv.target"></span><input type="number" id="targetKB" min="0" max="20000" step="50" value="0" placeholder="0 = 사용 안 함"></label>
+        <p class="hint" data-i18n="conv.targetHint"></p>
+      </div>
+      <div class="grp">
+        <div class="grp-title" data-i18n="conv.format"></div>
+        <div class="seg" id="outFormat">
+          <button class="seg-b active" data-v="image/jpeg">JPG</button>
+          <button class="seg-b" data-v="image/png">PNG</button>
+        </div>
+        <label class="row"><span data-i18n="conv.quality"></span>
+          <input type="range" id="outQuality" min="40" max="100" step="1" value="88"><output id="outQualityOut">88</output></label>
+      </div>
+      <div class="grp">
+        <div class="grp-title" data-i18n="conv.name"></div>
+        <label class="row"><input type="text" id="nameTemplate" value="{school}_{date}_{n}"></label>
+        <p class="hint" data-i18n="conv.nameHint"></p>
+        <div id="namePreview" class="hint mono"></div>
+      </div>
+      <div class="grp">
+        <div class="row">
+          <button id="btnConvertCurrent" class="btn" data-i18n="conv.applyCur"></button>
+          <button id="btnConvertAll" class="btn primary" data-i18n="conv.applyAll"></button>
+        </div>
+        <p class="hint" data-i18n="conv.applyHint"></p>
+      </div>
+    </div>
+
+    <div class="tabbody" id="tab-out" hidden>
+      <div class="grp">
+        <div class="grp-title" data-i18n="out.image"></div>
+        <div class="row">
+          <button id="btnDownloadCurrent" class="btn" data-i18n="out.current"></button>
+          <button id="btnDownloadZip" class="btn primary" data-i18n="out.zip"></button>
+        </div>
+        <p class="hint" data-i18n="out.exifHint"></p>
+      </div>
+      <div class="grp">
+        <div class="grp-title" data-i18n="out.sheet"></div>
+        <div class="seg" id="sheetLayout">
+          <button class="seg-b active" data-v="2x2">2 &times; 2</button>
+          <button class="seg-b" data-v="2x3">2 &times; 3</button>
+        </div>
+        <button id="btnContactSheet" class="btn" data-i18n="out.sheetMake"></button>
+      </div>
+      <div class="grp">
+        <div class="grp-title" data-i18n="out.pdf"></div>
+        <button id="btnPhotoPdf" class="btn" data-i18n="out.pdfMake"></button>
+      </div>
+      <div class="grp">
+        <div class="grp-title" data-i18n="out.merge"></div>
+        <p class="hint" data-i18n="out.mergeHint"></p>
+        <button id="btnMerge" class="btn" data-i18n="out.mergeMake"></button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="bottombar">
+  <button id="btnPrev" class="btn ghost">&larr;</button>
+  <button id="btnNext" class="btn ghost">&rarr;</button>
+  <span class="sep"></span>
+  <button id="btnApply" class="btn primary" data-i18n="bar.apply"></button>
+  <button id="btnUndo" class="btn" data-i18n="bar.undo"></button>
+  <button id="btnRevert" class="btn ghost" data-i18n="bar.revert"></button>
+  <span class="sep"></span>
+  <button id="btnBatchAll" class="btn accent" data-i18n="bar.batch"></button>
+  <span class="spacer"></span>
+  <div id="progressWrap" hidden>
+    <div id="progressBar"><i></i></div>
+    <span id="progressText" class="dim"></span>
+  </div>
+</footer>
+
+<div id="toasts"></div>
+<div id="busy" hidden><div class="spin"></div><span id="busyText"></span></div>
+
+<script src="js/i18n.js"></script>
+<script src="js/convert.js"></script>
+<script src="js/face.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
