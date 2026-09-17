@@ -17,9 +17,7 @@
 
 ## GitHub Pages
 
-<https://leeyunjai82.github.io/snap-lab/>
-
-(저장소 이름은 `snap-lab`, 도구 이름은 `snap-box` 입니다.)
+<https://leeyunjai82.github.io/snap-box/>
 
 로컬에서는 `python -m http.server` 로 열거나, `index.html` 을 그대로 더블클릭해도 동작합니다.
 
