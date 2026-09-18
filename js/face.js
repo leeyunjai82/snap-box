@@ -32,7 +32,17 @@ window.SnapLab = window.SnapLab || {};
   var MODEL_FULL  = url('models/blaze_face_full_range.tflite');
   var MODEL_SHORT = url('models/blaze_face_short_range.tflite');
 
-  var EXPAND = 0.15;      // 검출 박스 상하좌우 15% 확장
+  var EXPAND = 0.15;      // 검출 박스 상하좌우 15% 확장 (머리카락·턱 노출 방지)
+
+  /* 가림은 사각형이 아니라 타원으로 만들고 바깥은 투명하게 둔다.
+   * 사각 모자이크는 보고서에 넣으면 도장을 찍은 것처럼 튄다.
+   *
+   * 다만 사각형에 내접한 타원은 네 모서리를 잃는다. 그만큼 얼굴이 드러나면
+   * 안 되므로, 검출 박스를 한 번 더 넓혀서 타원이 예전 사각형만큼은 덮게 한다.
+   *   얼굴 폭 w 기준 박스 폭 = w × 1.3(EXPAND) × 1.18(ELLIPSE_K) ≈ 1.53w
+   *   얼굴 위·아래 끝(±0.5h)에서 타원의 반폭 ≈ 0.58w  >  그 높이의 머리 반폭 ≈ 0.4w
+   * 사람이 직접 그린 칸은 그린 그대로 쓴다(넓히지 않는다). */
+  var ELLIPSE_K = 1.18;
   var MAX_COLS = 8;       // 모자이크 블록은 박스 폭의 1/8보다 작아지지 않는다
   var DEFAULT_COLS = 5;   // 기본값은 상한(8칸)보다 강하게 잡는다
 
@@ -254,8 +264,8 @@ window.SnapLab = window.SnapLab || {};
     for (var i = 0; i < raw.length; i++) {
       var d = raw[i];
       if (d.score < minScore) continue;
-      var w = d.w * (1 + EXPAND * 2);
-      var h = d.h * (1 + EXPAND * 2);
+      var w = d.w * (1 + EXPAND * 2) * ELLIPSE_K;
+      var h = d.h * (1 + EXPAND * 2) * ELLIPSE_K;
       var cx = (d.x + d.w / 2) * scale;
       var cy = (d.y + d.h / 2) * scale;
       w *= scale; h *= scale;
@@ -352,6 +362,29 @@ window.SnapLab = window.SnapLab || {};
     g.drawImage(b, Math.round(tw * pad), Math.round(th * pad), tw, th, 0, 0, tw, th);
   }
 
+  /* 캔버스를 타원으로 오려내고 바깥은 alpha 0 으로 만든다.
+   * destination-in: 원본(타원)이 불투명한 곳만 남기고 나머지는 지운다.
+   * 가장자리는 안티에일리어싱으로 부드럽게 빠져 사진에 자연스럽게 얹힌다. */
+  function clipEllipse(c) {
+    var g = c.getContext('2d');
+    g.save();
+    g.globalCompositeOperation = 'destination-in';
+    g.beginPath();
+    g.ellipse(c.width / 2, c.height / 2, c.width / 2, c.height / 2, 0, 0, Math.PI * 2);
+    g.fillStyle = '#000';
+    g.fill();
+    g.restore();
+  }
+
+  /* 타원을 가득 채우도록 그린다(넘치는 부분은 오려낸다). 우리가 만든 둥근 그림에 쓴다. */
+  function drawCover(g, img, tw, th) {
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+    var s = Math.max(tw / iw, th / ih);
+    var w = iw * s, h = ih * s;
+    g.drawImage(img, (tw - w) / 2, (th - h) / 2, w, h);
+  }
+
   function drawContain(g, img, tw, th, ratio) {
     var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     if (!iw || !ih) return;
@@ -377,12 +410,16 @@ window.SnapLab = window.SnapLab || {};
     }
 
     if (def.type === 'icon') {
+      // 우리 그림은 둥근 판이라 타원을 가득 채워도 어색하지 않다
       var im = iconCache[def.iconId] || iconCache[ICONS[0].id];
-      if (im) drawContain(g, im, tw, th, 0.98);
+      if (im) drawCover(g, im, tw, th);
     } else if (def.type === 'image') {
+      // 사용자가 올린 그림은 잘리거나 찌그러지면 안 되므로 안쪽에 맞춘다.
+      // 남는 자리는 아래 깔린 모자이크가 채운다.
       var cu = customCache[def.customURL];
       if (cu) drawContain(g, cu, tw, th, 1.0);
     }
+    clipEllipse(c);
     return c;
   }
 
@@ -427,6 +464,8 @@ window.SnapLab = window.SnapLab || {};
     warmUp: warmUp,
     toBoxes: toBoxes,
     clampCols: clampCols,
+    clipEllipse: clipEllipse,
+    ELLIPSE_K: ELLIPSE_K,
     DEFAULT_COLS: DEFAULT_COLS,
     buildPatch: buildPatch,
     ensureAssets: ensureAssets,

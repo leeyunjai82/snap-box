@@ -228,10 +228,11 @@ window.SnapLab = window.SnapLab || {};
     if (!drawMode || !srcCanvas) return;
     if (opt.target) return;
     var p = canvas.getPointer(opt.e);
+    // 가림이 타원이므로 끌 때 보이는 미리보기도 타원으로 둔다 — 끈 대로 가려진다
     drawing = {
       x0: p.x, y0: p.y,
-      rect: new fabric.Rect({
-        left: p.x, top: p.y, width: 1, height: 1,
+      rect: new fabric.Ellipse({
+        left: p.x, top: p.y, rx: 0.5, ry: 0.5,
         fill: 'rgba(31,95,122,0.16)', stroke: '#1F5F7A', strokeWidth: 1,
         strokeDashArray: [4, 3], selectable: false, evented: false, objectCaching: false
       })
@@ -245,14 +246,14 @@ window.SnapLab = window.SnapLab || {};
     var p = canvas.getPointer(opt.e);
     var x = Math.min(p.x, drawing.x0), y = Math.min(p.y, drawing.y0);
     var w = Math.abs(p.x - drawing.x0), h = Math.abs(p.y - drawing.y0);
-    drawing.rect.set({ left: x, top: y, width: w, height: h });
+    drawing.rect.set({ left: x, top: y, rx: Math.max(0.5, w / 2), ry: Math.max(0.5, h / 2) });
     canvas.requestRenderAll();
   }
 
   function onUp() {
     if (!drawing) return;
     var r = drawing.rect;
-    var x = r.left, y = r.top, w = r.width, h = r.height;
+    var x = r.left, y = r.top, w = r.rx * 2, h = r.ry * 2;
     canvas.remove(r);
     drawing = null;
     if (w < 8 || h < 8) { canvas.requestRenderAll(); return; }
