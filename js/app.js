@@ -63,7 +63,7 @@
     'btnAddText', 'btnAddRect', 'btnAddArrow', 'btnAddStamp', 'btnStampAll',
     'btnConvertCurrent', 'btnConvertAll',
     'btnDownloadCurrent', 'btnDownloadZip', 'btnContactSheet', 'btnPhotoPdf', 'btnMerge',
-    'btnRemoveSel', 'btnClearQueue'
+    'btnRemoveSel', 'btnClearQueue', 'btnPeek'
   ];
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
@@ -274,7 +274,7 @@
       syncAdjustUI();
       var adjusted = C.isNeutral(state.settings.adjLive)
         ? preview : C.drawAdjusted(img, ps.w, ps.h, state.settings.adjLive);
-      cur = { item: item, img: img, preview: preview, previewAdjusted: adjusted, scale: ps.scale };
+      cur = { item: item, img: img, preview: preview, previewAdjusted: adjusted, scale: ps.scale, origPreview: null };
       E.setSource(adjusted);
       $('#stageEmpty').hidden = true;
       $('#stageName').textContent = item.origName;
@@ -456,6 +456,9 @@
    * 다시 열기 전에 반드시 여기를 먼저 지나야 한다. */
   function dropCurrent() {
     if (!cur) return;
+    peeking = false;
+    var pk = document.getElementById('btnPeek');
+    if (pk) pk.classList.remove('on');
     cur.item.stash = null;
     C.releaseImage(cur.img);
     cur = null;
@@ -885,6 +888,46 @@
   }
 
 
+
+  /* ── 원본 잠깐 보기 ──────────────────────────────────────
+   * 누르고 있는 동안만 원본을 보여 준다. 되돌리는 게 아니라 보기만 하는 것이라
+   * 작업이 사라지지 않는다. 가린 자리가 맞는지 확인할 때 쓴다. */
+  var peeking = false;
+
+  function setPeek(on) {
+    if (!cur || on === peeking) return;
+    peeking = !!on;
+    $('#btnPeek').classList.toggle('on', peeking);
+
+    if (!peeking) {
+      E.showBackground(cur.previewAdjusted);
+      E.setObjectsVisible(true);
+      return;
+    }
+    var item = cur.item;
+    if (cur.origPreview) {
+      E.showBackground(cur.origPreview);
+      E.setObjectsVisible(false);
+      return;
+    }
+    C.loadImageFromBlob(item.origBlob).then(function (img) {
+      // 자르거나 줄인 뒤라면 원본과 지금 사진의 모양이 다르다. 캔버스 크기는 그대로 두고
+      // 원본을 안쪽에 맞춰 넣는다 — 늘어나지 않고, 모양이 달라진 것도 눈에 보인다.
+      var cw = cur.preview.width, ch = cur.preview.height;
+      var c = C.makeCanvas(cw, ch);
+      var g = c.getContext('2d');
+      g.fillStyle = '#F1F3F5';                       // --bg
+      g.fillRect(0, 0, cw, ch);
+      var k = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
+      var w = img.naturalWidth * k, h = img.naturalHeight * k;
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+      C.releaseImage(img);
+      cur.origPreview = c;
+      if (peeking && cur) { E.showBackground(cur.origPreview); E.setObjectsVisible(false); }
+    }).catch(function (e) { console.warn(e); peeking = false; $('#btnPeek').classList.remove('on'); });
+  }
+
   /* ── 지금 할 일 한 줄 ────────────────────────────────────
    * 도구가 스스로 다음 동작을 제시한다. 처음 쓰는 사람은 이 줄만 따라가면
    * 넣기 → 가리기 → 받기 가 끝난다. 나머지 설정은 안 건드려도 된다. */
@@ -1239,12 +1282,22 @@
     $('#btnUndo').addEventListener('click', undo);
     $('#btnRevert').addEventListener('click', revertOriginal);
 
+    var peek = $('#btnPeek');
+    ['mousedown', 'touchstart'].forEach(function (ev) {
+      peek.addEventListener(ev, function (e) { e.preventDefault(); setPeek(true); });
+    });
+    ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(function (ev) {
+      peek.addEventListener(ev, function () { setPeek(false); });
+    });
+    window.addEventListener('blur', function () { setPeek(false); });
+
     /* 키보드 */
     document.addEventListener('keydown', function (e) {
       var tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
       var act = E.canvas && E.canvas.getActiveObject();
       if (act && act.isEditing) return;
+      if (e.key === '\\') { setPeek(true); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (E.deleteSelected()) { e.preventDefault(); updateDetectLabel(); }
       } else if (e.key === 'ArrowLeft') {
@@ -1253,6 +1306,8 @@
         if (state.index < state.items.length - 1) selectItem(state.index + 1);
       }
     });
+
+    document.addEventListener('keyup', function (e) { if (e.key === '\\') setPeek(false); });
 
     window.addEventListener('beforeunload', function (e) {
       if (state.items.length) { e.preventDefault(); e.returnValue = ''; }

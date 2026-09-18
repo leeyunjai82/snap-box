@@ -58,7 +58,9 @@ var GL_I18N = {
   '다음 사진': 'Next',
   '적용': 'Apply',
   '되돌리기': 'Undo',
-  '원본으로': 'Back to original',
+  '처음 상태로': 'Back to original',
+  '원본 보기': 'Peek original',
+  '누르고 있으면 원본이 보입니다': 'Hold to see the original',
 
   // ── 얼굴 가리기 ──
   '민감도': 'Sensitivity',
@@ -193,7 +195,7 @@ var GL_I18N = {
   '원래대로': 'unchanged',
   '쓰지 않음': 'off',
   '단축키': 'Shortcuts',
-  '← → 이전·다음 사진 · Delete 고른 표시 지우기': '← → previous / next photo · Delete removes the selected mark',
+  '← → 이전·다음 사진 · Delete 고른 표시 지우기 · \\ 누르고 있으면 원본': '← → previous / next photo · Delete removes the selected mark · hold \\ to peek at the original',
 
   // ── 자리 채우기가 있는 문장 (GL_TF) ──
   '얼굴 {n} · 표시 {b}': '{n} face(s) · {b} mark(s)',

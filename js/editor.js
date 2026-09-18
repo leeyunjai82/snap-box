@@ -87,6 +87,35 @@ window.SnapLab = window.SnapLab || {};
    * 사진이 아니라 무대 전체를 감싸 버린다. 여백은 바깥 flex 가 만든다. */
   var FIT_PAD = 16;
 
+  /* ── 원본 잠깐 보기 ──────────────────────────────────────
+   * 바탕 그림만 바꿔 끼우고 얹은 것들을 숨긴다. srcCanvas 는 건드리지 않으므로
+   * 가림 패치를 다시 만들지 않고, 놓아 주면 그대로 돌아온다.
+   * (refreshSource 를 쓰면 패치를 전부 다시 굽게 되어 느리고 상태도 흔들린다) */
+  function showBackground(canvasEl) {
+    if (!canvas || !canvasEl) return;
+    canvas.backgroundImage = new fabric.Image(canvasEl, {
+      left: 0, top: 0, selectable: false, evented: false,
+      originX: 'left', originY: 'top'
+    });
+    canvas.requestRenderAll();
+  }
+
+  /* 잠깐 감추는 동안 고르고 있던 것을 기억했다가 되돌려 놓는다.
+   * 원본을 봤다고 해서 고르던 표시가 풀리면 안 된다. */
+  var peekActive = null;
+
+  function setObjectsVisible(v) {
+    if (!canvas) return;
+    if (!v) { peekActive = canvas.getActiveObject() || null; canvas.discardActiveObject(); }
+    canvas.getObjects().forEach(function (o) { o.visible = !!v; });
+    canvas.selection = v && !drawMode;
+    if (v) {
+      if (peekActive && canvas.getObjects().indexOf(peekActive) >= 0) canvas.setActiveObject(peekActive);
+      peekActive = null;
+    }
+    canvas.requestRenderAll();
+  }
+
   function fitView() {
     if (!canvas || !wrap || !pw) return;
     var cw = wrap.clientWidth - FIT_PAD, ch = wrap.clientHeight - FIT_PAD;
@@ -445,6 +474,8 @@ window.SnapLab = window.SnapLab || {};
     get previewH() { return ph; },
     setSource: setSource,
     refreshSource: refreshSource,
+    showBackground: showBackground,
+    setObjectsVisible: setObjectsVisible,
     fitView: fitView,
     clearAll: clearAll,
     addMask: addMask,
