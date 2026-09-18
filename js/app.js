@@ -48,6 +48,14 @@
 
   var cur = null;   // {item, img, preview, previewAdjusted, scale}
 
+  /* 화면 슬라이더는 '오른쪽일수록 세다' 로 통일한다. 내부 값은 반대이므로 여기서 뒤집는다.
+   *   가림 세기 1~6  →  모자이크 칸 수 8~3 (칸이 적을수록 굵게 가려진다)
+   *   민감도   1~9  →  기준값 0.9~0.1     (기준값이 낮을수록 많이 찾는다) */
+  function strengthToCols(v) { return 9 - Math.max(1, Math.min(6, +v || 4)); }
+  function colsToStrength(c) { return 9 - Math.max(3, Math.min(8, +c || 5)); }
+  function sensToConf(v) { return (10 - Math.max(1, Math.min(9, +v || 5))) / 10; }
+  function confToSens(c) { return Math.max(1, Math.min(9, Math.round(10 - (+c || 0.5) * 10))); }
+
   /* 사진이 없으면 눌러 봐야 안내만 뜨는 버튼들 — 아예 잠가 둔다 */
   var NEEDS_PHOTO = [
     'btnRedetect', 'btnApplyToSelected', 'btnApplyToAll', 'btnDelBox', 'btnClearBoxes',
@@ -227,7 +235,6 @@
     $('#posLabel').textContent = (state.items.length ? state.index + 1 : 0) + ' / ' + state.items.length;
     $('#btnPrev').disabled = state.index <= 0;
     $('#btnNext').disabled = state.index < 0 || state.index >= state.items.length - 1;
-    $('#btnBatchAll').disabled = !state.items.length;
     setToolsEnabled(state.items.length > 0);
     var picked = state.items.filter(function (i) { return i.checked; }).length;
     var mg = $('#btnMerge');
@@ -236,6 +243,7 @@
     $('#dropZone').classList.toggle('slim', state.items.length > 0);
     $('#queueHint').hidden = state.items.length > 0;
     updateApplyState();
+    updateGuide();
     updateNamePreview();
   }
 
@@ -346,10 +354,11 @@
       el.classList.add('ok');
     } else {
       var det = all.filter(function (o) { return o.data.fromDetect; }).length;
-      el.textContent = TF('찾은 얼굴 {n} · 칸 {b}', { n: det, b: all.length });
+      el.textContent = TF('얼굴 {n} · 표시 {b}', { n: det, b: all.length });
       el.classList.toggle('ok', all.length > 0);
     }
     updateApplyState();
+    updateGuide();
   }
 
   function setToolsEnabled(on) {
@@ -875,6 +884,73 @@
     });
   }
 
+
+  /* ── 지금 할 일 한 줄 ────────────────────────────────────
+   * 도구가 스스로 다음 동작을 제시한다. 처음 쓰는 사람은 이 줄만 따라가면
+   * 넣기 → 가리기 → 받기 가 끝난다. 나머지 설정은 안 건드려도 된다. */
+  var guideAction = null;
+
+  function updateGuide() {
+    var txt = $('#guideText'), btn = $('#guideBtn'), ico = $('#guideIcon');
+    if (!txt) return;
+    var n = state.items.length;
+
+    function set(icon, message, label, btnIcon, act, primary) {
+      ico.className = 'fa-solid ' + icon;
+      txt.textContent = message;
+      btn.innerHTML = '<i class="fa-solid ' + btnIcon + '"></i>';
+      btn.appendChild(document.createTextNode(label));
+      btn.className = 'db ' + (primary === false ? '' : 'go');
+      btn.hidden = false;
+      guideAction = act;
+    }
+
+    if (!n) {
+      $('#guide').className = 'guide';
+      set('fa-images', T('먼저 사진을 넣습니다'), T('사진 넣기'), 'fa-plus',
+          function () { $('#fileInput').click(); });
+      return;
+    }
+
+    var left = state.items.filter(function (it) { return it.status !== 'done'; }).length;
+    var it = currentItem();
+
+    if (left) {
+      // 얼굴을 못 찾았다면, 어디를 만져야 하는지 버튼 하나로 대신해 준다.
+      // '자세한 설정' 안의 얼굴 크기를 직접 찾아 들어가라고 하면 아무도 못 찾는다.
+      if (it && it.faceCount === 0 && !E.masks().length && state.settings.range !== 'group') {
+        $('#guide').className = 'guide warn';
+        set('fa-triangle-exclamation', T('얼굴을 못 찾았습니다. 더 작은 얼굴까지 찾아볼까요?'),
+            T('더 찾아보기'), 'fa-magnifying-glass-plus', function () {
+              state.settings.range = 'group';
+              setPick('#detectRange', 'group');
+              $('#faceMore').open = true;
+              saveSettings();
+              autoDetect(true);
+            });
+        return;
+      }
+      if (it && it.faceCount === 0 && !E.masks().length) {
+        $('#guide').className = 'guide warn';
+        set('fa-triangle-exclamation', T('얼굴을 못 찾았습니다. 사진 위를 끌어서 직접 표시해 주세요'),
+            T('전체 가리기'), 'fa-layer-group', batchAutoMask, false);
+        return;
+      }
+      $('#guide').className = 'guide';
+      set('fa-user-large', TF('사진 {n}장이 있습니다. 찾은 얼굴을 한꺼번에 가립니다', { n: n }),
+          T('전체 가리기'), 'fa-layer-group', batchAutoMask);
+      return;
+    }
+
+    var blank = state.items.filter(function (x) { return x.faceCount === 0; }).length;
+    $('#guide').className = 'guide ' + (blank ? 'warn' : 'done');
+    set('fa-circle-check',
+        blank ? TF('다 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요', { b: blank })
+              : T('다 가렸습니다. 넘겨 보며 확인한 뒤 내려받으세요'),
+        T('전체 내려받기'), 'fa-file-zipper',
+        function () { goStep('out'); downloadZip(); });
+  }
+
   /* ── 작은 UI 도우미 ────────────────────────────────────── */
   function bindPick(sel, onPick) {
     $$(sel + ' .db').forEach(function (b) {
@@ -952,6 +1028,8 @@
       b.addEventListener('click', function () { goStep(b.dataset.step); });
     });
 
+    $('#guideBtn').addEventListener('click', function () { if (guideAction) guideAction(); });
+
     var dz = $('#dropZone');
     dz.addEventListener('click', function (e) { if (e.target.tagName !== 'INPUT') $('#fileInput').click(); });
     $('#fileInput').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
@@ -990,8 +1068,8 @@
 
     /* 1. 얼굴 가리기 */
     $('#confSlider').addEventListener('input', function (e) {
-      state.settings.conf = e.target.value / 100;
-      $('#confOut').value = state.settings.conf.toFixed(2);
+      state.settings.conf = sensToConf(e.target.value);
+      $('#confOut').value = e.target.value;
     });
     $('#confSlider').addEventListener('change', function () { saveSettings(); rebuildDetectionMasks(); });
     bindPick('#detectRange', function (v) {
@@ -1006,10 +1084,11 @@
       $('#stageWrap').classList.toggle('drawing', on);
     });
     bindPick('#maskType', function (v) { state.settings.maskType = v; saveSettings(); showMaskOptions(); });
-    $('#pixelCols').addEventListener('input', function (e) {
-      state.settings.cols = +e.target.value; $('#pixelColsOut').value = e.target.value;
+    $('#pixelStrength').addEventListener('input', function (e) {
+      state.settings.cols = strengthToCols(e.target.value);
+      $('#pixelStrengthOut').value = e.target.value;
     });
-    $('#pixelCols').addEventListener('change', function () {
+    $('#pixelStrength').addEventListener('change', function () {
       saveSettings(); if (state.settings.maskType === 'pixelate') applyDefToAllBoxes();
     });
     $('#blurStrength').addEventListener('input', function (e) {
@@ -1159,7 +1238,6 @@
     $('#btnApply').addEventListener('click', bakeCurrent);
     $('#btnUndo').addEventListener('click', undo);
     $('#btnRevert').addEventListener('click', revertOriginal);
-    $('#btnBatchAll').addEventListener('click', batchAutoMask);
 
     /* 키보드 */
     document.addEventListener('keydown', function (e) {
@@ -1183,11 +1261,12 @@
 
   function syncUIFromSettings() {
     var s = state.settings;
-    $('#confSlider').value = Math.round(s.conf * 100);
-    $('#confOut').value = s.conf.toFixed(2);
+    $('#confSlider').value = confToSens(s.conf);
+    $('#confOut').value = confToSens(s.conf);
     setPick('#detectRange', s.range);
     setPick('#maskType', s.maskType);
-    $('#pixelCols').value = s.cols; $('#pixelColsOut').value = s.cols;
+    $('#pixelStrength').value = colsToStrength(s.cols);
+    $('#pixelStrengthOut').value = colsToStrength(s.cols);
     $('#blurStrength').value = s.blurPct; $('#blurStrengthOut').value = s.blurPct;
     $('#annotColor').value = s.annot.color;
     $('#annotWidth').value = s.annot.width;
@@ -1215,6 +1294,11 @@
     buildIconPicker();
     bindUI();
     syncUIFromSettings();
+    var more = $('#faceMore');
+    try { more.open = localStorage.getItem('snapbox.faceMore') === '1'; } catch (e) {}
+    more.addEventListener('toggle', function () {
+      try { localStorage.setItem('snapbox.faceMore', more.open ? '1' : '0'); } catch (e) {}
+    });
     goStep('face');
     renderQueue();
     updateDetectLabel();

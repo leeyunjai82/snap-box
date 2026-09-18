@@ -59,46 +59,40 @@ var GL_I18N = {
   '적용': 'Apply',
   '되돌리기': 'Undo',
   '원본으로': 'Back to original',
-  '전체 한꺼번에 가리기': 'Hide faces in all',
 
   // ── 얼굴 가리기 ──
-  '찾기': 'Find',
-  '기준값': 'Threshold',
-  '기준값을 내리면 더 많이 찾고, 올리면 확실한 것만 찾습니다.':
-    'Lower it to find more, raise it to keep only the sure ones.',
+  '민감도': 'Sensitivity',
+  '자세한 설정': 'More settings',
+  '오른쪽으로 갈수록 더 많이 찾습니다. 엉뚱한 곳까지 잡히면 왼쪽으로 옮기세요.':
+    'Further right finds more. Move left if it starts boxing things that are not faces.',
   '다시 찾기': 'Find again',
-  '찾는 범위': 'Search depth',
-  '가까이': 'Close-up',
+  '사진 속 얼굴 크기': 'How big are the faces',
+  '크게': 'Large',
   '보통': 'Normal',
-  '단체사진': 'Group photo',
-  '얼굴이 작게 찍혔으면 범위를 넓히세요. 사진을 잘게 잘라 여러 번 보므로 그만큼 느려집니다. 보통은 얼굴 폭이 사진의 3.5%까지, 단체사진은 2.4%까지 찾습니다.':
-    'Widen it when faces are small in frame. The photo is cut into tiles and scanned several times, so it takes longer. Normal reaches faces down to 3.5% of the photo width, Group photo down to 2.4%.',
-  '칸 그리기': 'Draw a box',
-  '못 찾은 얼굴은 사진 위를 끌어서 칸을 직접 그립니다. 찾은 칸은 상하좌우로 15% 넓혀 둡니다.':
-    'Drag on the photo to box a face it missed. Found boxes are widened by 15% on every side.',
-  '얼굴이 사진 너비의 2%보다 작으면 범위를 넓혀도 못 찾습니다. 그때는 칸을 직접 그려 주세요.':
-    'Faces smaller than 2% of the photo width are missed even at the widest depth. Draw those boxes yourself.',
-  '가리는 방법': 'How to hide',
+  '작게': 'Small',
+  '단체사진처럼 얼굴이 작게 찍혔으면 작게로 두세요. 더 꼼꼼히 보는 대신 느려집니다. 얼굴이 사진 너비의 2%보다 작으면 그래도 못 찾습니다.':
+    'Pick Small for group photos where faces are tiny. It looks harder and takes longer. Faces under 2% of the photo width are missed even then.',
+  '못 찾은 얼굴이 있으면': 'If a face was missed',
+  '사진 위를 끌어서 직접 표시': 'Drag on the photo to mark it',
+  '얼굴 위를 대각선으로 끌면 그 자리를 가립니다. 표시를 고른 뒤 Delete 키로 지웁니다.':
+    'Drag diagonally across a face to hide it. Select a mark and press Delete to remove it.',
+  '어떻게 가릴까요': 'How should faces be hidden',
   '모자이크': 'Mosaic',
   '흐리게': 'Blur',
   '그림': 'Picture',
   '내 이미지': 'My image',
-  '칸 수': 'Blocks',
-  '칸 수가 적을수록 더 많이 가립니다. 얼굴 너비를 8칸보다 잘게 쪼개지는 않습니다.':
-    'Fewer blocks hide more. A face is never cut into more than 8 blocks across.',
+  '가림 세기': 'Strength',
+  '오른쪽으로 갈수록 더 굵게 가립니다.': 'Further right hides more coarsely.',
   '가림 처리함': 'Faces hidden',
   '바꾼 것을 사진에 굽습니다': 'Bake the changes into the photo',
-  '정도': 'Amount',
   'PNG 고르기': 'Choose a PNG',
   '아직 고른 이미지가 없습니다': 'No image chosen yet',
-  '고른 칸에만': 'Selected box',
-  '모든 칸에': 'All boxes',
-  '그림·내 이미지는 두 눈 위치로 기울기를 맞춥니다. 직접 그린 칸은 맞추지 않습니다.':
-    'Pictures are tilted to match the eyes. Boxes you draw are left upright.',
-  '칸 정리': 'Boxes',
-  '고른 칸 지우기': 'Delete selected',
-  '칸 모두 지우기': 'Delete all',
-  '칸을 고른 뒤 Delete 키로도 지웁니다.': 'You can also select a box and press Delete.',
+  '고른 것만 바꾸기': 'Change selected',
+  '전체 바꾸기': 'Change all',
+  '가리는 방법을 바꾼 뒤 누르면 이미 놓인 표시에 반영됩니다.': 'Applies a new style to marks already placed.',
+  '그림·내 이미지는 두 눈 위치로 기울기를 맞춥니다.': 'Pictures are tilted to match the eyes.',
+  '고른 것 지우기': 'Delete selected',
+  '모두 지우기': 'Delete all',
 
   // ── 다듬기 ──
   '돌리기·자르기': 'Rotate & crop',
@@ -199,16 +193,32 @@ var GL_I18N = {
   '원래대로': 'unchanged',
   '쓰지 않음': 'off',
   '단축키': 'Shortcuts',
-  '← → 이전·다음 사진 · Delete 고른 칸 지우기': '← → previous / next photo · Delete removes the selected box',
+  '← → 이전·다음 사진 · Delete 고른 표시 지우기': '← → previous / next photo · Delete removes the selected mark',
 
   // ── 자리 채우기가 있는 문장 (GL_TF) ──
-  '찾은 얼굴 {n} · 칸 {b}': '{n} face(s) · {b} box(es)',
+  '얼굴 {n} · 표시 {b}': '{n} face(s) · {b} mark(s)',
   '{ok}장 모두 했습니다': 'Done — {ok} photo(s)',
   '{ok}장 했습니다. {fail}장은 실패했습니다': 'Done {ok}, failed {fail}',
   '{n}장을 ZIP으로 저장했습니다': 'Saved {n} photo(s) as ZIP',
   '얼굴을 찾는 중입니다 {i}/{n}': 'Looking for faces {i}/{n}',
   '얼굴 {n}': '{n} face(s)',
   '얼굴 못 찾음': 'no face found',
+
+  // ── 지금 할 일 한 줄 ──
+  '먼저 사진을 넣습니다': 'Start by adding photos',
+  '사진 넣기': 'Add photos',
+  '전체 가리기': 'Hide in all',
+  '더 찾아보기': 'Look harder',
+  '얼굴을 못 찾았습니다. 더 작은 얼굴까지 찾아볼까요?':
+    'No face found. Shall we look for smaller faces?',
+  '전체 내려받기': 'Download all',
+  '사진 {n}장이 있습니다. 찾은 얼굴을 한꺼번에 가립니다': '{n} photo(s) ready — hide every face found',
+  '얼굴을 못 찾았습니다. 사진 위를 끌어서 직접 표시해 주세요':
+    'No face found. Please drag on the photo to mark it',
+  '다 가렸습니다. 넘겨 보며 확인한 뒤 내려받으세요':
+    'All hidden. Flip through to check, then download',
+  '다 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요':
+    'All hidden. {b} photo(s) had no face found — please check them',
   '얼굴 {n}개를 가렸습니다. 놓친 얼굴이 없는지 넘겨 보며 확인해 주세요':
     'Hid {n} face(s). Flip through the photos and check nothing was missed',
   '얼굴 {n}개를 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요':

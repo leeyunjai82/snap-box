@@ -262,6 +262,31 @@ input[type=file]{display:none}
 .track{height:5px;border-radius:999px;background:var(--line-soft);overflow:hidden}
 .fill{height:100%;width:0;background:var(--acc);transition:width .2s}
 
+/* 지금 할 일 한 줄 — 도구가 다음 동작을 스스로 제시한다.
+   패널 머리줄 바로 아래에 붙이고, 오른쪽 끝에 주 동작 버튼 하나만 둔다. */
+.guide{display:flex;align-items:center;gap:9px;flex-shrink:0;
+  padding:8px 11px;background:var(--acc-soft);border-bottom:1px solid var(--line);
+  font-size:12px;font-weight:600;color:var(--acc-ink)}
+.guide i{flex-shrink:0;font-size:13px}
+.guide .g-txt{flex:1;min-width:0;line-height:1.45}
+.guide .db{flex-shrink:0}
+.guide.warn{background:var(--warn-soft);color:var(--warn)}
+.guide.done{background:var(--ok-soft);color:var(--ok)}
+
+/* 자주 안 쓰는 설정 접기 */
+.more{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:4px}
+.more > summary{list-style:none;cursor:pointer;padding:7px 2px;
+  font-size:11.5px;font-weight:700;color:var(--ink3);
+  display:flex;align-items:center;gap:6px;-webkit-user-select:none;user-select:none}
+.more > summary::-webkit-details-marker{display:none}
+.more > summary::before{content:'\f078';font-family:'Font Awesome 6 Free';font-weight:900;
+  font-size:9px;transition:transform .15s}
+.more[open] > summary::before{transform:rotate(180deg)}
+.more > summary:hover{color:var(--acc-ink)}
+
+/* 한 줄을 다 쓰는 버튼 */
+.db.wide{width:100%;justify-content:center}
+
 /* 지금 설정 요약표 */
 .summary{border:1px solid var(--line);border-radius:var(--r-m);background:var(--panel2);overflow:hidden}
 .summary .srow{display:flex;align-items:baseline;gap:8px;padding:5px 9px;
