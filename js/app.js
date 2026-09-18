@@ -250,6 +250,7 @@
   /* ── 사진 열기 ─────────────────────────────────────────── */
   function releaseCurrent() {
     if (!cur) return;
+    resetPeek();
     cur.item.stash = E.hasPending() ? E.stash() : null;
     cur.item.adjust = Object.assign({}, state.settings.adjLive);
     C.releaseImage(cur.img);
@@ -456,9 +457,7 @@
    * 다시 열기 전에 반드시 여기를 먼저 지나야 한다. */
   function dropCurrent() {
     if (!cur) return;
-    peeking = false;
-    var pk = document.getElementById('btnPeek');
-    if (pk) pk.classList.remove('on');
+    resetPeek();
     cur.item.stash = null;
     C.releaseImage(cur.img);
     cur = null;
@@ -893,6 +892,14 @@
    * 누르고 있는 동안만 원본을 보여 준다. 되돌리는 게 아니라 보기만 하는 것이라
    * 작업이 사라지지 않는다. 가린 자리가 맞는지 확인할 때 쓴다. */
   var peeking = false;
+
+  /* 사진을 닫을 때는 반드시 여기를 지난다. 안 그러면 누른 채로 사진을 넘겼을 때
+   * 버튼만 눌린 상태로 굳어, 다음에 눌러도 아무 일도 일어나지 않는다. */
+  function resetPeek() {
+    peeking = false;
+    var pk = document.getElementById('btnPeek');
+    if (pk) pk.classList.remove('on');
+  }
 
   function setPeek(on) {
     if (!cur || on === peeking) return;
