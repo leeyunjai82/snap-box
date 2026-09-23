@@ -204,6 +204,7 @@ var GL_I18N = {
   '{n}장을 ZIP으로 저장했습니다': 'Saved {n} photo(s) as ZIP',
   '얼굴을 찾는 중입니다 {i}/{n}': 'Looking for faces {i}/{n}',
   '얼굴 {n}': '{n} face(s)',
+  '가린 얼굴 {n}': '{n} face(s) hidden',
   '얼굴 못 찾음': 'no face found',
 
   // ── 지금 할 일 한 줄 ──

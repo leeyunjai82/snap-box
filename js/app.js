@@ -168,6 +168,7 @@
               detRaw: null,
               detTried: false,
               faceCount: null,      // 마지막으로 찾은 얼굴 수 (null = 아직 안 찾음)
+              maskedCount: 0,       // 실제로 가린 얼굴 수 (구울 때만 늘어난다)
               adjust: { b: 100, c: 100, s: 100 },
               history: [],
               stash: null,
@@ -212,10 +213,15 @@
       var nm = document.createElement('div');
       nm.className = 'nm'; nm.textContent = it.origName; nm.title = it.origName;
       var mt = document.createElement('div');
-      var noFace = (it.faceCount === 0);
-      mt.className = 'mt' + (noFace ? ' bad' : it.status === 'done' ? ' done' : it.status === 'err' ? ' bad' : '');
+      // 가린 뒤에 다시 찾으면 이미 가려진 얼굴은 안 잡힌다.
+      // 그래서 다 된 사진은 '찾은 수' 가 아니라 '가린 수' 를 보여 준다.
+      var done = (it.status === 'done');
+      var hid = it.maskedCount || 0;
+      var noFace = (it.faceCount === 0) && !(done && hid);
+      mt.className = 'mt' + (noFace ? ' bad' : done ? ' done' : it.status === 'err' ? ' bad' : '');
       var tail = it.width + '×' + it.height;
-      if (it.faceCount === 0) tail = T('얼굴 못 찾음');
+      if (done && hid) tail = TF('가린 얼굴 {n}', { n: hid });
+      else if (noFace) tail = T('얼굴 못 찾음');
       else if (it.faceCount > 0) tail = TF('얼굴 {n}', { n: it.faceCount });
       mt.textContent = T(STATUS_TEXT[it.status] || '대기') + ' · ' + tail;
       mt.title = it.width + '×' + it.height;
@@ -409,14 +415,24 @@
     return out;
   }
 
-  function commit(item, canvas, blob) {
-    item.history.push(item.blob);
+  function commit(item, canvas, blob, masked) {
+    item.history.push({ blob: item.blob, masked: item.maskedCount || 0 });
     if (item.history.length > 8) item.history.shift();
+    item.maskedCount = (item.maskedCount || 0) + (masked || 0);
     item.blob = blob;
     item.width = canvas.width;
     item.height = canvas.height;
     item.thumb = C.thumbDataURL(canvas);
     item.status = 'done';
+  }
+
+  /* 사진이 바뀌면 찾아 둔 좌표는 못 쓴다.
+   * 다만 이미 가린 사진이면 다시 찾지 않는다 — 가려 놓은 자리를 얼굴로
+   * 잘못 잡아 그 위에 또 덧칠하고, 가린 얼굴 수까지 늘어난다.
+   * 더 찾고 싶으면 '다시 찾기' 를 누르면 된다. */
+  function resetDetect(item) {
+    if (item.maskedCount > 0) { item.detRaw = []; item.detTried = true; }
+    else { item.detRaw = null; item.detTried = false; }
   }
 
   function bakeCurrent() {
@@ -435,7 +451,7 @@
     return (annotURL ? C.loadImage(annotURL) : Promise.resolve(null)).then(function (annotImg) {
       var out = renderFullRes(cur.img, item.width, item.height, state.settings.adjLive, maskItems, annotImg);
       return C.canvasToBlob(out, 'image/png').then(function (blob) {
-        commit(item, out, blob);
+        commit(item, out, blob, maskItems.length);
         item.detRaw = [];            // 이미 가렸으므로 다시 찾을 필요가 없다
         item.stash = null;
         state.settings.adjLive = { b: 100, c: 100, s: 100 };
@@ -527,6 +543,7 @@
       C.isNeutral(state.settings.adjLive);
 
     var prep = onlyAuto ? (dropCurrent(), Promise.resolve()) : flushPending();
+    var run = { masked: 0, blank: 0 };
 
     return prep
       .then(function () { return F.ensureAssets(def); })
@@ -537,7 +554,8 @@
               item.detRaw = raw; item.detTried = true;      // 원본 좌표계
               var boxes = F.toBoxes(raw, state.settings.conf, 1, item.width, item.height);
               item.faceCount = boxes.length;
-              if (!boxes.length) return;
+              if (!boxes.length) { run.blank++; return; }
+              run.masked += boxes.length;
               var maskItems = boxes.map(function (b) {
                 var d = Object.assign({}, def);
                 d.cols = F.clampCols(d.cols);
@@ -550,7 +568,7 @@
               });
               var out = renderFullRes(img, item.width, item.height, null, maskItems, null);
               return C.canvasToBlob(out, 'image/png').then(function (blob) {
-                commit(item, out, blob);
+                commit(item, out, blob, boxes.length);
                 item.detRaw = []; item.stash = null;
               });
             });
@@ -559,8 +577,7 @@
       })
       .then(function () {
         // 검출기가 다 잡아 주지는 않는다. 몇 개를 가렸는지 알려 주고 확인을 권한다.
-        var n = state.items.reduce(function (a, it) { return a + (it.faceCount || 0); }, 0);
-        var blank = state.items.filter(function (it) { return it.faceCount === 0; }).length;
+        var n = run.masked, blank = run.blank;
         toast(blank
           ? TF('얼굴 {n}개를 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요', { n: n, b: blank })
           : TF('얼굴 {n}개를 가렸습니다. 놓친 얼굴이 없는지 넘겨 보며 확인해 주세요', { n: n }));
@@ -757,6 +774,7 @@
               thumb: C.thumbDataURL(out),
               status: 'done', detRaw: [], detTried: true,
               adjust: { b: 100, c: 100, s: 100 },
+              faceCount: null, maskedCount: 0,
               history: [], stash: null, checked: false
             });
             renderQueue(); busy(false); toast(T('붙인 사진을 목록에 넣었습니다'));
@@ -777,7 +795,7 @@
         if (!out) { busy(false); return; }
         return C.canvasToBlob(out, 'image/png').then(function (blob) {
           commit(it, out, blob);
-          it.detRaw = null; it.detTried = false;
+          resetDetect(it);
           return reloadCurrent().then(function () { busy(false); renderQueue(); });
         });
       });
@@ -819,7 +837,9 @@
     }
     if (!item.history.length) { toast(T('더 되돌릴 것이 없습니다')); return; }
     busy(true);
-    item.blob = item.history.pop();
+    var back = item.history.pop();
+    item.blob = back.blob;
+    item.maskedCount = back.masked;
     reloadFromBlob(item).then(function () { busy(false); toast(T('되돌렸습니다')); })
       .catch(function (e) { busy(false); toast(String(e)); });
   }
@@ -829,8 +849,9 @@
     if (!item) { toast(T('사진을 먼저 넣어 주세요')); return; }
     if (!confirm(T('이 사진을 처음 넣었을 때로 되돌릴까요?'))) return;
     busy(true);
-    item.history.push(item.blob);
+    item.history.push({ blob: item.blob, masked: item.maskedCount || 0 });
     item.blob = item.origBlob;
+    item.maskedCount = 0;
     item.status = 'wait';
     reloadFromBlob(item).then(function () { busy(false); toast(T('원본으로 되돌렸습니다')); })
       .catch(function (e) { busy(false); toast(String(e)); });
@@ -841,7 +862,7 @@
       item.width = img.naturalWidth; item.height = img.naturalHeight;
       item.thumb = C.thumbDataURL(img);
       C.releaseImage(img);
-      item.detRaw = null; item.detTried = false; item.stash = null;
+      resetDetect(item); item.stash = null;
       return reloadCurrent();
     }).then(function () { renderQueue(); });
   }
@@ -992,7 +1013,7 @@
       return;
     }
 
-    var blank = state.items.filter(function (x) { return x.faceCount === 0; }).length;
+    var blank = state.items.filter(function (x) { return !x.maskedCount && x.faceCount === 0; }).length;
     $('#guide').className = 'guide ' + (blank ? 'warn' : 'done');
     set('fa-circle-check',
         blank ? TF('다 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요', { b: blank })
