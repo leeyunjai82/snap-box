@@ -1,0 +1,65 @@
+/*
+ * DigitalBrain 공통 디자인 토큰. 원본은 leeyunjai.github.io 저장소의 brand/tokens.css 이고,
+ * 허브·도구·딴짓·키즈랩·AI 샷이 같은 파일을 복사해 쓴다. 값을 바꿀 때는 원본을 고친 뒤 각 저장소에 다시 복사한다.
+ *
+ * 쓰는 법: <html data-db-app="games" data-db-theme="dark"> 처럼 앱과 밝기를 정한다.
+ *   data-db-app    hub | kids-lab | games | ai-shot | clip-box | snap-box   (강조색이 바뀐다)
+ *   data-db-theme  light | dark | 없음(기기 설정을 따른다)
+ */
+:root {
+  --db-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+
+  --db-brand: #2f6fed;          /* 브랜드 마크 바탕. 앱과 상관없이 항상 이 파랑 */
+
+  --db-bg: #f7f7f5;
+  --db-card: #ffffff;
+  --db-line: #e3e4e8;
+  --db-sub: #5b606b;
+  --db-text: #16181d;
+
+  --db-radius: 14px;            /* 카드 */
+  --db-radius-sm: 10px;         /* 버튼·입력칸 */
+  --db-pill: 999px;             /* 칩 */
+  --db-bar-h: 52px;             /* 공통 상단 바 */
+  --db-hit: 44px;               /* 누르는 곳 최소 크기 */
+
+  /* 강조색. --db-accent 는 칩·링크·테두리, --db-accent-bg/--db-on-accent 는 글자가 올라가는 버튼(대비 4.5:1 이상) */
+  --db-accent: #2f6fed;
+  --db-accent-bg: #2f6fed;
+  --db-on-accent: #ffffff;
+}
+
+[data-db-app="kids-lab"] { --db-accent: #f5b400; --db-accent-bg: #f5b400; --db-on-accent: #16181d; --db-bg: #fdf7e8; }  /* 키즈랩은 따뜻한 크림 바탕 */
+[data-db-app="games"]    { --db-accent: #c2410c; --db-accent-bg: #c2410c; --db-on-accent: #ffffff; }
+[data-db-app="ai-shot"]  { --db-accent: #6d4ae6; --db-accent-bg: #6d4ae6; --db-on-accent: #ffffff; }
+[data-db-app="clip-box"] { --db-accent: #0f766e; --db-accent-bg: #0f766e; --db-on-accent: #ffffff; }
+[data-db-app="snap-box"] { --db-accent: #be185d; --db-accent-bg: #be185d; --db-on-accent: #ffffff; }
+
+/* 어두운 화면. 어두운 바탕에서는 강조색을 밝은 쪽으로 쓰고, 그 위 글자는 어두운 색 */
+[data-db-theme="dark"] {
+  --db-bg: #111318; --db-card: #1a1d24; --db-line: #2a2e37; --db-sub: #a0a6b2; --db-text: #eceef2;
+  --db-accent: #7aa2ff; --db-accent-bg: #7aa2ff; --db-on-accent: #111318;
+}
+[data-db-theme="dark"][data-db-app="games"]   { --db-accent: #ff8a4c; --db-accent-bg: #ff8a4c; --db-on-accent: #111318; }
+[data-db-theme="dark"][data-db-app="ai-shot"] { --db-accent: #9d86ff; --db-accent-bg: #9d86ff; --db-on-accent: #111318; }
+[data-db-theme="dark"][data-db-app="clip-box"] { --db-accent: #2dd4bf; --db-accent-bg: #2dd4bf; --db-on-accent: #111318; }
+[data-db-theme="dark"][data-db-app="snap-box"] { --db-accent: #f472b6; --db-accent-bg: #f472b6; --db-on-accent: #111318; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-db-theme]) {
+    --db-bg: #111318; --db-card: #1a1d24; --db-line: #2a2e37; --db-sub: #a0a6b2; --db-text: #eceef2;
+    --db-accent: #7aa2ff; --db-accent-bg: #7aa2ff; --db-on-accent: #111318;
+  }
+}
+
+/* 공통 상단 바: 왼쪽 브랜드 마크(누르면 dibrain.dev 첫 화면) + 앱 이름, 오른쪽 앱별 버튼 */
+.db-bar { display: flex; align-items: center; gap: 8px; height: var(--db-bar-h); padding: 0 6px 0 4px; box-sizing: border-box;
+  background: var(--db-bg); color: var(--db-text); border-bottom: 1px solid var(--db-line); font-family: var(--db-font); }
+.db-bar .db-home { display: inline-flex; align-items: center; justify-content: center; width: var(--db-hit); height: var(--db-hit); flex: none; border-radius: 12px; }
+.db-bar .db-home svg { width: 22px; height: 22px; display: block; }
+.db-bar .db-title { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; }
+.db-bar .db-sp { flex: 1; }
+.db-bar .db-btn { display: inline-flex; align-items: center; justify-content: center; min-width: var(--db-hit); height: var(--db-hit); padding: 0;
+  border: 0; border-radius: 12px; background: transparent; color: var(--db-sub); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.db-bar .db-btn:hover, .db-bar .db-home:hover { background: color-mix(in srgb, var(--db-text) 8%, transparent); }
+.db-bar .db-btn:focus-visible, .db-bar .db-home:focus-visible { outline: 2px solid var(--db-accent); outline-offset: -2px; }

@@ -1,12 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════════
-   snap-box 전용 스타일 — css/maker-tool.css 뒤에 얹는다
+   snap-box 전용 스타일 — css/db-tokens.css · css/ui.css 뒤에 얹는다
    ═══════════════════════════════════════════════════════════════════
-   규칙 (design/README.md):
-     · 새 색·새 폰트를 만들지 않는다. 킷의 토큰만 쓴다.
-     · 킷에 있는 것(.db .inp .pan .hint .sec2 .prg .badge .dropzone
+   규칙:
+     · 새 색·새 폰트를 만들지 않는다. ui.css 의 토큰(→ --db-*)만 쓴다.
+     · ui.css 에 있는 것(.db .inp .pan .hint .sec2 .prg .badge .dropzone
        .rangerow .fieldrow .pickrow .filebtn .summary .namepv .mk-bar …)을
-       먼저 찾아 쓰고, snap-box 에만 있는 것만 여기에 만든다.
-     · 자매 서비스도 쓸 만한 것이 생기면 킷(css/maker-tool.css)으로 옮긴다.
+       먼저 찾아 쓰고, 이 화면에만 있는 것만 여기에 만든다.
 
    여기 남은 것: 사진 목록 줄 · 미리보기 무대 · 얼굴 대체 그림 고르기.
    전부 "사진을 다루는 서비스" 에만 필요한 것들이다.
@@ -40,7 +39,7 @@
   display:flex;align-items:center;justify-content:center;background:var(--bg)}
 .pb-stage .canvas-container{margin:auto}
 /* 사진 경계를 바탕과 구분해 준다 */
-.pb-stage canvas{box-shadow:0 0 0 1px var(--line),0 2px 10px rgba(28,32,36,.10)}
+.pb-stage canvas{box-shadow:0 0 0 1px var(--line),0 2px 10px rgba(22,24,29,.10)}
 /* 칸 그리기 중에는 커서로 알려 준다 */
 .pb-stage.drawing canvas{cursor:crosshair}
 

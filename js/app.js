@@ -944,7 +944,7 @@
       var cw = cur.preview.width, ch = cur.preview.height;
       var c = C.makeCanvas(cw, ch);
       var g = c.getContext('2d');
-      g.fillStyle = '#F1F3F5';                       // --bg
+      g.fillStyle = '#F7F7F5';                       // --db-bg
       g.fillRect(0, 0, cw, ch);
       var k = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
       var w = img.naturalWidth * k, h = img.naturalHeight * k;

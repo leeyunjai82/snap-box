@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════
-// 다국어 (한국어 / English) — sense-lab lib/i18n.js 와 같은 방식
+// 다국어 (한국어 / English)
 // ═══════════════════════════════════════════════════════════
-// 설계 (sense-lab · 파이보 랩과 동일)
+// 설계
 //  · 한국어 원문을 그대로 '키' 로 쓴다 → 사전에 없으면 한국어가 그대로 나오므로
 //    번역이 빠져도 화면이 깨지지 않는다.
 //  · HTML 은 손대지 않는다. 페이지가 뜨면 DOM 을 훑어서 텍스트를 바꾼다.
-//  · 언어 설정은 같은 localStorage 키 'language' 를 쓴다.
+//  · 언어 설정은 localStorage 키 'language' 에 둔다.
 //  · 사용자가 적은 사업명·학교명·파일 이름은 사전에 없으므로 번역되지 않는다 (의도된 동작).
 //
 // 주의: 번역할 문장 안에 <span> 같은 인라인 요소를 넣지 말 것.
@@ -245,7 +245,7 @@ function GL_TF(ko, vars) {
   });
 }
 
-// ── 화면(HTML) 자동 번역 — sense-lab 과 동일 ──
+// ── 화면(HTML) 자동 번역 ──
 function localizeDOM(root) {
   if (GL_LANG === 'ko') return;
   var scope = root || document.body;
@@ -273,24 +273,31 @@ function localizeDOM(root) {
     document.title = GL_I18N[document.title.trim()];
 }
 
-// ── 언어 토글 버튼 (sense-lab 과 같은 버튼·위치·저장 키) ──
+// ── 언어 토글 버튼 (상단 바 .db-bar 오른쪽 끝의 #langToggle) ──
 function setLanguage(v) {
   try { localStorage.setItem('language', v); } catch (e) {}
   location.reload();
 }
 
 function mountLangToggle() {
-  var bar = document.querySelector('header');
-  if (!bar || document.getElementById('langToggle')) return;
+  var b = document.getElementById('langToggle');
+  if (!b) {
+    var bar = document.querySelector('.db-bar');
+    if (!bar) return;
+    b = document.createElement('button');
+    b.id = 'langToggle';
+    b.type = 'button';
+    b.className = 'db-btn';
+    bar.appendChild(b);
+  }
+  if (b.dataset.ready) return;
+  b.dataset.ready = '1';
 
   var toKo = (GL_LANG !== 'ko');
-  var b = document.createElement('button');
-  b.id = 'langToggle';
-  b.type = 'button';
   b.textContent = toKo ? '한' : 'EN';
   b.title = '한국어 / English';
+  b.setAttribute('aria-label', toKo ? '한국어로 보기' : 'View in English');
   b.addEventListener('click', function () { setLanguage(toKo ? 'ko' : 'en'); });
-  bar.appendChild(b);
 }
 
 if (document.readyState === 'loading') {

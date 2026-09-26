@@ -32,10 +32,10 @@ window.SnapLab = window.SnapLab || {};
       uniformScaling: false
     });
     fabric.Object.prototype.transparentCorners = false;
-    // 색은 css/maker-tool.css 토큰과 같은 값 — --acc / --panel / --warn
-    fabric.Object.prototype.cornerColor = '#1F5F7A';      /* --acc */
-    fabric.Object.prototype.cornerStrokeColor = '#FFFFFF'; /* --panel */
-    fabric.Object.prototype.borderColor = '#1F5F7A';
+    // 색은 css/db-tokens.css 토큰과 같은 값 (캔버스는 CSS 변수를 못 읽는다) — --db-accent / --db-card
+    fabric.Object.prototype.cornerColor = '#BE185D';      /* --db-accent (snap-box, 밝은 화면) */
+    fabric.Object.prototype.cornerStrokeColor = '#FFFFFF'; /* --db-card */
+    fabric.Object.prototype.borderColor = '#BE185D';
     fabric.Object.prototype.cornerSize = 10;
     fabric.Object.prototype.padding = 0;
 
@@ -262,7 +262,7 @@ window.SnapLab = window.SnapLab || {};
       x0: p.x, y0: p.y,
       rect: new fabric.Ellipse({
         left: p.x, top: p.y, rx: 0.5, ry: 0.5,
-        fill: 'rgba(31,95,122,0.16)', stroke: '#1F5F7A', strokeWidth: 1,
+        fill: 'rgba(190,24,93,0.16)', stroke: '#BE185D', strokeWidth: 1,   /* --db-accent */
         strokeDashArray: [4, 3], selectable: false, evented: false, objectCaching: false
       })
     };

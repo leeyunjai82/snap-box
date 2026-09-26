@@ -2,7 +2,7 @@
 
 보고서에 넣을 사진의 **얼굴 가림 · 편집 · 용량 정리 · PDF 만들기**를 브라우저 한 페이지에서 끝냅니다.
 
-### → [snap-box 열기](https://leeyunjai82.github.io/snap-box/)
+### → [snap-box 열기](https://dibrain.dev/snap-box/)
 
 설치 없이 바로 씁니다. 데스크톱 Chrome · Edge 기준입니다.
 
@@ -47,12 +47,16 @@
 [JSZip](https://stuk.github.io/jszip/) 3.10.1 ·
 [Pretendard](https://github.com/orioncactus/pretendard) ·
 [Font Awesome Free](https://fontawesome.com/) 6.2.0.
-얼굴 대체 그림과 서비스 마크는 자체 제작입니다.
+얼굴 대체 그림은 yjworks 가 직접 그렸습니다. 앱 아이콘과 상단 바는 DigitalBrain 브랜드 키트를 따릅니다.
 
 `index.html` 을 그대로 열어도 되지만, 그때는 얼굴 자동 찾기만 못 씁니다
 (Chrome 이 `file://` 에서 모델 읽기를 막습니다). 나머지는 그대로 동작합니다.
 
-디자인은 **업무 도구 킷**(`css/maker-tool.css`)입니다. 자매 서비스 기준은
-[`design/README.md`](design/README.md), 컴포넌트 실물은 [`design/preview.html`](design/preview.html).
+색·글꼴·상단 바는 DigitalBrain 공통 토큰(`css/db-tokens.css`, 원본 사본이라 고치지 않음)을 쓰고,
+화면 틀은 `css/ui.css`, 이 앱에만 있는 것은 `css/app.css` 에 있습니다.
+설정값(사업명·학교명·날짜 등)만 `localStorage` 에 두고 사진은 저장하지 않습니다.
+
+얼굴 찾기 모델은 Google MediaPipe 의 BlazeFace(짧은 거리·긴 거리)이고
+Apache License 2.0 입니다. `models/` 의 파일은 Google 이 배포한 원본 그대로입니다.
 
 </details>
