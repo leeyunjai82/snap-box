@@ -78,6 +78,20 @@
   .db-reset-row{margin:4px 8px 0;padding:10px 2px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--db-line)}
   .pb-stage{min-height:420px}
 }
+/* 사진이 아직 없을 때 좁은 화면(패널이 위아래로 쌓일 때):
+   위 사진 목록의 '놓는 자리'가 유일한 시작 버튼이다. 그 바로 아래에 같은 말을 하는
+   안내 줄('먼저 사진을 넣습니다 / 사진 넣기')·상태 배지·큰 빈 칸이 또 나오지 않게 접고,
+   '이 브라우저 안에서만 처리' 한 줄만 남긴다. 사진을 넣으면 app.js 가 body.no-photos 를 뗀다. */
+body.no-photos .pb-stage .canvas-container{display:none}   /* 빈 캔버스 틀(300×150)이 안내 뒤에 비치지 않게 */
+@media (max-width:1100px){
+  body.no-photos #guide,
+  body.no-photos #detectState,
+  body.no-photos #stageEmpty span{display:none}
+  body.no-photos .pb-stage{min-height:0}
+  body.no-photos #stageEmpty{position:static;flex-direction:row;gap:10px;padding:12px 14px;text-align:left}
+  body.no-photos #stageEmpty i{font-size:18px}
+  body.no-photos #stageEmpty p{max-width:none;font-weight:600}
+}
 @media (max-width:700px){
   .db-reset-row{font-size:12.5px}
   .qitem .nm{font-size:13.5px}

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-db-app="snap-box" data-db-theme="light">
+<html lang="ko" data-db-app="snap-box">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -11,19 +11,22 @@
 <meta property="og:title" content="스냅박스 — 사진 정리">
 <meta property="og:description" content="보고서에 넣을 사진의 얼굴 가림·편집·용량 정리를 이 브라우저 안에서 끝냅니다.">
 <meta property="og:url" content="https://dibrain.dev/snap-box/">
+<meta property="og:image" content="https://dibrain.dev/og-default.png">
 <link rel="icon" href="assets/img/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="assets/img/icon.svg">
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="스냅박스">
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#f7f7f5">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="assets/fonts/pretendard.css">
 <link rel="stylesheet" href="css/all.min.css">
 <link rel="stylesheet" href="css/db-tokens.css">
 <link rel="stylesheet" href="css/ui.css">
 <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
+<body class="no-photos">
 
 <header class="db-bar">
   <a class="db-home" href="https://dibrain.dev/" aria-label="DigitalBrain 첫 화면"><svg viewBox="0 0 96 96" aria-hidden="true"><rect width="96" height="96" rx="22" fill="#2f6fed"/><path fill="#fff" d="M25.5 24H40.5a3.5 3.5 0 0 1 3.5 3.5V68.5a3.5 3.5 0 0 1-3.5 3.5H25.5a3.5 3.5 0 0 1-3.5-3.5V27.5a3.5 3.5 0 0 1 3.5-3.5Z M49 23.2a24.8 24.8 0 0 1 0 49.6Z"/></svg></a>
@@ -32,7 +35,7 @@
   <span class="db-sp"></span>
   <span class="badge" id="engine">준비 중…</span>
   <button class="db-btn" id="fsBtn" type="button" title="전체화면" aria-label="전체화면" hidden><i class="fa-solid fa-expand"></i></button>
-  <button class="db-btn" id="langToggle" type="button" title="한국어 / English">EN</button>
+  <button class="db-btn" id="langToggle" type="button" title="한국어 / English" aria-label="View in English" lang="en">EN</button>
 </header>
 
 <nav class="tabbar" id="toolTabs">
@@ -80,7 +83,7 @@
       <div id="stageEmpty">
         <i class="fa-solid fa-shield-halved"></i>
         <p>사진은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.</p>
-        <span>왼쪽에 사진을 넣으면 여기에 나옵니다.</span>
+        <span>사진을 넣으면 여기에 나옵니다.</span>
       </div>
     </div>
   </section>
@@ -127,7 +130,8 @@
         <div class="sec2">
           <div class="st">못 찾은 얼굴이 있으면</div>
           <button class="db on wide" id="btnDrawBox"><i class="fa-solid fa-vector-square"></i>사진 위를 끌어서 직접 표시</button>
-          <div class="hint">얼굴 위를 대각선으로 끌면 그 자리를 가립니다. 표시를 고른 뒤 Delete 키로 지웁니다.</div>
+          <div class="hint">얼굴 위를 대각선으로 끌면 그 자리를 가립니다. 잘못 그린 표시는 골라서 고른 것 지우기를 누릅니다.</div>
+          <div class="hint kbd-only">Delete 키로도 지울 수 있습니다.</div>
           <div class="row" style="margin-top:7px">
             <button class="db" id="btnRedetect"><i class="fa-solid fa-magnifying-glass"></i>다시 찾기</button>
             <button class="db danger" id="btnDelBox">고른 것 지우기</button>
@@ -160,8 +164,8 @@
           <div class="hint">가리는 방법을 바꾼 뒤 누르면 이미 놓인 표시에 반영됩니다.
             그림·내 이미지는 두 눈 위치로 기울기를 맞춥니다.</div>
 
-          <div class="st" style="margin-top:12px">단축키</div>
-          <div class="hint">← → 이전·다음 사진 · Delete 고른 표시 지우기 · \ 누르고 있으면 원본</div>
+          <div class="st kbd-only" style="margin-top:12px">단축키</div>
+          <div class="hint kbd-only">← → 이전·다음 사진 · Delete 고른 표시 지우기 · \ 누르고 있으면 원본</div>
         </details>
       </div>
 
@@ -285,7 +289,7 @@
 
         <div class="sec2">
           <div class="st">전·후 붙이기</div>
-          <div class="hint">왼쪽 목록에서 두 장을 고른 뒤 누르면 좌우로 나란히 붙입니다.</div>
+          <div class="hint">사진 목록에서 두 장을 체크한 뒤 누르면 좌우로 나란히 붙입니다.</div>
           <button class="db" id="btnMerge" style="width:100%;justify-content:center;margin-top:7px"><i class="fa-solid fa-object-group"></i>고른 두 장 붙이기</button>
         </div>
       </div>

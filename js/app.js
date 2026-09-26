@@ -245,9 +245,11 @@
     var picked = state.items.filter(function (i) { return i.checked; }).length;
     var mg = $('#btnMerge');
     mg.disabled = (picked !== 2);
-    mg.title = picked === 2 ? '' : T('왼쪽 목록에서 두 장을 체크해 주세요');
+    mg.title = picked === 2 ? '' : T('사진 목록에서 두 장을 체크해 주세요');
     $('#dropZone').classList.toggle('slim', state.items.length > 0);
     $('#queueHint').hidden = state.items.length > 0;
+    // 사진이 없을 때 좁은 화면은 빈 미리보기를 접는다(css/app.css) — 시작 버튼은 위 '놓는 자리' 하나
+    document.body.classList.toggle('no-photos', !state.items.length);
     updateApplyState();
     updateGuide();
     updateNamePreview();
@@ -944,7 +946,8 @@
       var cw = cur.preview.width, ch = cur.preview.height;
       var c = C.makeCanvas(cw, ch);
       var g = c.getContext('2d');
-      g.fillStyle = '#F7F7F5';                       // --db-bg
+      // 화면에만 보이는 여백이라 지금 화면 밝기의 바탕색(--db-bg)을 쓴다. 내보내는 파일과는 상관없다
+      g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--db-bg').trim() || '#F7F7F5';
       g.fillRect(0, 0, cw, ch);
       var k = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
       var w = img.naturalWidth * k, h = img.naturalHeight * k;

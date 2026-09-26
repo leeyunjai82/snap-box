@@ -22,6 +22,7 @@ var GL_LANG = (function () {
   var nav = (navigator.language || navigator.userLanguage || 'ko');
   return nav.toLowerCase().indexOf('ko') === 0 ? 'ko' : 'en';
 })();
+document.documentElement.lang = GL_LANG;   // 화면 읽기·번역기·글꼴 고르기가 지금 언어를 알게
 
 var GL_I18N = {
   // ── 페이지 · 헤더 ──
@@ -55,7 +56,7 @@ var GL_I18N = {
   '사진을 넣어 주세요': 'Add a photo',
   '사진은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.':
     'Photos are processed only inside this browser and are never uploaded.',
-  '왼쪽에 사진을 넣으면 여기에 나옵니다.': 'Add photos on the left and they show up here.',
+  '사진을 넣으면 여기에 나옵니다.': 'Add photos and they show up here.',
   '이전 사진': 'Previous',
   '다음 사진': 'Next',
   '적용': 'Apply',
@@ -78,8 +79,9 @@ var GL_I18N = {
     'Pick Small for group photos where faces are tiny. It looks harder and takes longer. Faces under 2% of the photo width are missed even then.',
   '못 찾은 얼굴이 있으면': 'If a face was missed',
   '사진 위를 끌어서 직접 표시': 'Drag on the photo to mark it',
-  '얼굴 위를 대각선으로 끌면 그 자리를 가립니다. 표시를 고른 뒤 Delete 키로 지웁니다.':
-    'Drag diagonally across a face to hide it. Select a mark and press Delete to remove it.',
+  '얼굴 위를 대각선으로 끌면 그 자리를 가립니다. 잘못 그린 표시는 골라서 고른 것 지우기를 누릅니다.':
+    'Drag diagonally across a face to hide it. To remove a wrong mark, select it and press Delete selected.',
+  'Delete 키로도 지울 수 있습니다.': 'The Delete key removes it too.',
   '어떻게 가릴까요': 'How should faces be hidden',
   '모자이크': 'Mosaic',
   '흐리게': 'Blur',
@@ -160,8 +162,8 @@ var GL_I18N = {
   '한 쪽에 한 장 (PDF)': 'One per page (PDF)',
   'PDF 만들기': 'Build the PDF',
   '전·후 붙이기': 'Before & after',
-  '왼쪽 목록에서 두 장을 고른 뒤 누르면 좌우로 나란히 붙입니다.':
-    'Check two photos on the left to place them side by side.',
+  '사진 목록에서 두 장을 체크한 뒤 누르면 좌우로 나란히 붙입니다.':
+    'Check two photos in the photo list, then press this to place them side by side.',
   '고른 두 장 붙이기': 'Join the two',
 
   // ── 알림 ──
@@ -192,7 +194,7 @@ var GL_I18N = {
   '사진을 모두 뺄까요? 되돌릴 수 없습니다.': 'Remove every photo? This cannot be undone.',
   '뺄 사진을 체크해 주세요': 'Check the photos you want to remove',
   '이 사진을 처음 넣었을 때로 되돌릴까요?': 'Put this photo back the way it came in?',
-  '왼쪽 목록에서 두 장을 체크해 주세요': 'Check two photos on the left',
+  '사진 목록에서 두 장을 체크해 주세요': 'Check two photos in the photo list',
   '지금 설정': 'Current settings',
   '원래대로': 'unchanged',
   '쓰지 않음': 'off',
@@ -282,6 +284,7 @@ function localizeDOM(root) {
 }
 
 // ── 언어 토글 버튼 (상단 바 .db-bar 오른쪽 끝의 #langToggle) ──
+// 세 앱(AI 샷 · 클립박스 · 스냅박스) 공통: 버튼에는 바꿀 언어를 쓴다 — 한국어 화면이면 'EN', 영어 화면이면 '한'.
 function setLanguage(v) {
   try { localStorage.setItem('snap-box:language', v); } catch (e) {}
   location.reload();
@@ -305,6 +308,7 @@ function mountLangToggle() {
   b.textContent = toKo ? '한' : 'EN';
   b.title = '한국어 / English';
   b.setAttribute('aria-label', toKo ? '한국어로 보기' : 'View in English');
+  b.lang = toKo ? 'ko' : 'en';
   b.addEventListener('click', function () { setLanguage(toKo ? 'ko' : 'en'); });
 }
 

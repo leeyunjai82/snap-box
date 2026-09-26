@@ -35,15 +35,27 @@
   --acc-bg:    var(--db-accent-bg);                                 /* 글자가 올라가는 주 버튼 */
   --on-acc:    var(--db-on-accent);
   --ok:        #2E7D4F;   /* 끝남·통과 (상태색 — 토큰에 없음) */
-  --ok-soft:   #EDF5F0;
   --warn:      #B4451C;   /* 경고·지우기 (상태색 — 토큰에 없음) */
-  --warn-soft: #FBEFEA;
+  --on-warn:   #fff;      /* --warn 면 위 글자 */
+  /* 옅은 면·선은 위 두 색을 카드 색에 섞어 만든다 → 어두운 화면에서도 저절로 어두워진다 */
+  --ok-soft:   color-mix(in srgb, var(--ok) 12%, var(--db-card));
+  --ok-line:   color-mix(in srgb, var(--ok) 30%, var(--db-card));
+  --warn-soft: color-mix(in srgb, var(--warn) 12%, var(--db-card));
+  --warn-hover:color-mix(in srgb, var(--warn) 82%, var(--db-text));
+  color-scheme: light dark;  /* 고르기 칸·날짜 칸·스크롤 막대도 기기 밝기를 따른다 */
 
   --r-s: 4px; --r-m: 6px;
   --shadow: 0 1px 2px rgba(22,24,29,.06);
   --mono: ui-monospace,'SF Mono','Cascadia Mono',Consolas,monospace;
   --sans: var(--db-font);
 }
+/* 어두운 화면: 상태색만 밝은 쪽으로 (나머지는 --db-* 토큰이 바꾼다).
+   내보내는 사진(가림 그림·표기·표시 기본색)에는 이 색을 쓰지 않는다 — 화면 밝기와 상관없이 같은 결과가 나와야 한다. */
+@media (prefers-color-scheme: dark){
+  :root:not([data-db-theme]){--ok:#5CC98A;--warn:#FF8A65;--on-warn:#111318}
+}
+[data-db-theme="dark"]{--ok:#5CC98A;--warn:#FF8A65;--on-warn:#111318;color-scheme:dark}
+[data-db-theme="light"]{color-scheme:light}
 
 /* ── 2. 기본 리셋 · 배경 ── */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -86,7 +98,7 @@ body{
 /* 상태 배지 */
 .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;
   background:var(--panel2);border:1px solid var(--line);color:var(--ink3);white-space:nowrap}
-.badge.ok{color:var(--ok);background:var(--ok-soft);border-color:#C9DCCB}
+.badge.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok-line)}
 
 /* ── 4. 작업 탭 · 3단 패널 ──
    밑줄 탭이 곧 오른쪽 도구 패널의 탭이다. 끝난 단계는 번호가 초록으로 바뀐다. */
@@ -97,7 +109,7 @@ body{
 .tabbar .tab{
   display:inline-flex;align-items:center;gap:7px;flex-shrink:0;
   background:none;border:0;border-bottom:2px solid transparent;border-radius:0;
-  padding:9px 14px;font-family:inherit;font-size:12.5px;font-weight:600;
+  min-height:var(--db-hit);padding:9px 14px;font-family:inherit;font-size:12.5px;font-weight:600;
   color:var(--ink3);cursor:pointer;white-space:nowrap;transition:color .12s;
 }
 .tabbar .tab:hover{color:var(--ink)}
@@ -132,13 +144,18 @@ body{
 
 .pb-label{font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:6px}
 .hint{font-size:11px;color:var(--ink3);margin-top:8px;line-height:1.6}
+/* 단축키 안내는 키보드·마우스가 있는 기기에서만 (폰·태블릿에서는 숨긴다) */
+.kbd-only{display:none}
+@media (hover:hover) and (pointer:fine){ .kbd-only{display:block} }
 .sec2{border-top:1px solid var(--line-soft);margin-top:12px;padding-top:11px}
 .sec2 .st{font-size:11px;font-weight:700;color:var(--ink3);margin-bottom:7px;
   text-transform:uppercase;letter-spacing:.03em}
 
-/* ── 버튼 ── */
+/* ── 버튼 ──
+   누르는 곳은 가로·세로 모두 44px 이상(--db-hit). 글자 크기는 그대로 두고 높이만 채운다. */
 .row{display:flex;gap:6px}
-.db{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+.db{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);
+  min-height:var(--db-hit);min-width:var(--db-hit);
   background:var(--panel);color:var(--ink2);border-radius:var(--r-s);padding:6px 11px;
   font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;
   -webkit-user-select:none;user-select:none;touch-action:manipulation;white-space:nowrap}
@@ -150,13 +167,15 @@ body{
 .db.go{background:var(--acc-bg);color:var(--on-acc);border-color:var(--acc-bg)}      /* 주 동작 */
 .db.go:hover{background:var(--acc-ink);border-color:var(--acc-ink);color:var(--on-acc)}
 .db.go:disabled{background:var(--acc-bg);border-color:var(--acc-bg);color:var(--on-acc)}
-.db.warn{background:var(--warn);color:#fff;border-color:var(--warn)}              /* 강한 경고 */
-.db.warn:hover{background:#9C3C18;border-color:#9C3C18;color:#fff}
+.db.warn{background:var(--warn);color:var(--on-warn);border-color:var(--warn)}      /* 강한 경고 */
+.db.warn:hover{background:var(--warn-hover);border-color:var(--warn-hover);color:var(--on-warn)}
 .db.danger{color:var(--ink3)}                                                     /* 조용한 지우기 */
 .db.danger:hover{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+/* 지우는 버튼은 옆의 다른 버튼과 조금 떨어뜨린다 — 잘못 누르지 않게 */
+.db:not(.danger):not(.warn) + .db.danger,.db:not(.danger):not(.warn) + .db.warn{margin-left:8px}
 
 /* ── 입력 ── */
-.inp{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel);
+.inp{flex:1;min-width:0;min-height:var(--db-hit);border:1px solid var(--line);background:var(--panel);
   border-radius:var(--r-s);padding:6px 9px;font-size:12px;font-family:inherit;
   color:var(--ink);outline:none;transition:border-color .12s}
 .inp:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
@@ -184,7 +203,7 @@ input[type=file]{display:none}
 .minirow{flex-wrap:wrap}
 .mini{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink3);font-weight:700}
 .mini .inp{width:52px;flex:none;text-align:right}
-.mini input[type=color]{width:30px;height:24px;padding:1px;border:1px solid var(--line);
+.mini input[type=color]{width:var(--db-hit);height:var(--db-hit);padding:2px;border:1px solid var(--line);
   border-radius:var(--r-s);background:var(--panel);cursor:pointer}
 
 /* 여러 개 중 하나 고르기 (.db 를 붙여 쓴다) */
@@ -247,7 +266,7 @@ input[type=file]{display:none}
 
 /* 자주 안 쓰는 설정 접기 */
 .more{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:4px}
-.more > summary{list-style:none;cursor:pointer;padding:7px 2px;
+.more > summary{list-style:none;cursor:pointer;padding:7px 2px;min-height:var(--db-hit);
   font-size:11.5px;font-weight:700;color:var(--ink3);
   display:flex;align-items:center;gap:6px;-webkit-user-select:none;user-select:none}
 .more > summary::-webkit-details-marker{display:none}
@@ -286,7 +305,7 @@ input[type=file]{display:none}
 
 /* ── 7. 토스트 · 처리 중 ── */
 #toast,.toast{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:200;
-  background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;padding:9px 16px;
+  background:var(--ink);color:var(--panel);font-size:12.5px;font-weight:600;padding:9px 16px;
   border-radius:var(--r-m);box-shadow:0 6px 20px rgba(22,24,29,.22);
   opacity:0;pointer-events:none;transition:opacity .2s;max-width:70vw;text-align:center}
 #toast.on,.toast.on{opacity:1}
