@@ -1,7 +1,7 @@
 {
   "id": "/snap-box/",
-  "name": "snap-box",
-  "short_name": "snap-box",
+  "name": "스냅박스",
+  "short_name": "스냅박스",
   "description": "보고서에 넣을 사진의 얼굴 가림·편집·용량 정리를 이 브라우저 안에서 끝냅니다.",
   "lang": "ko",
   "start_url": "./",

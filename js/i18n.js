@@ -24,7 +24,8 @@ var GL_LANG = (function () {
 
 var GL_I18N = {
   // ── 페이지 · 헤더 ──
-  'snap-box — 사진 정리': 'snap-box — Photo prep',
+  '스냅박스 — 사진 정리': 'Snap Box — Photo prep',
+  '스냅박스': 'Snap Box',
   '보고서 사진 정리': 'Report photo prep',
   '준비 중…': 'Getting ready…',
   '준비 완료': 'Ready',
