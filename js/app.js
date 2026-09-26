@@ -12,7 +12,7 @@
   var X = SnapLab.exporter;
   var T = GL_T, TF = GL_TF;
 
-  var LS_KEY = 'snapbox.settings';          // 저장 키 규약: <서비스>.<이름>
+  var LS_KEY = 'snap-box:settings';         // 저장 키 규약: <앱>:<이름> (예전 snapbox.* 는 records.js 가 옮긴다)
   var STEPS = ['face', 'edit', 'conv', 'out'];
   var STEP_META = {
     face: { title: '얼굴 가리기', icon: 'fa-eye-slash' },
@@ -1378,9 +1378,9 @@
     bindUI();
     syncUIFromSettings();
     var more = $('#faceMore');
-    try { more.open = localStorage.getItem('snapbox.faceMore') === '1'; } catch (e) {}
+    try { more.open = localStorage.getItem('snap-box:faceMore') === '1'; } catch (e) {}
     more.addEventListener('toggle', function () {
-      try { localStorage.setItem('snapbox.faceMore', more.open ? '1' : '0'); } catch (e) {}
+      try { localStorage.setItem('snap-box:faceMore', more.open ? '1' : '0'); } catch (e) {}
     });
     goStep('face');
     renderQueue();

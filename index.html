@@ -311,9 +311,16 @@
   </div>
 </div>
 
+<!-- 기록 전체 삭제 — 이 앱 것만 지운다(js/records.js, 블로그 저장소 brand/README.md) -->
+<footer class="db-reset-row">
+  <span>기록은 이 기기에만 저장됩니다. 사업명·학교명 스탬프와 설정</span>
+  <button type="button" class="db-reset" id="dbReset">기록 전체 삭제</button>
+</footer>
+
 <div id="toast"></div>
 <div id="busy" hidden><div class="busy-box"><span class="busy-mark"></span><span id="busyText">처리하는 중입니다</span></div></div>
 
+<script src="js/records.js"></script>
 <script src="js/nav.js"></script>
 <script src="js/i18n.js"></script>
 <script src="vendor/fabric/fabric.min.js"></script>

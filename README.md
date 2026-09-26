@@ -55,6 +55,8 @@
 색·글꼴·상단 바는 DigitalBrain 공통 토큰(`css/db-tokens.css`, 원본 사본이라 고치지 않음)을 쓰고,
 화면 틀은 `css/ui.css`, 이 앱에만 있는 것은 `css/app.css` 에 있습니다.
 설정값(사업명·학교명·날짜 등)만 `localStorage` 에 두고 사진은 저장하지 않습니다.
+키는 모두 `snap-box:` 로 시작합니다(`snap-box:settings`, `snap-box:faceMore`, `snap-box:language`).
+페이지 맨 아래 **기록 전체 삭제**로 이 앱 것만 지웁니다(dibrain.dev 의 다른 앱 기록은 그대로).
 
 얼굴 찾기 모델은 Google MediaPipe 의 BlazeFace(짧은 거리·긴 거리)이고
 Apache License 2.0 입니다. `models/` 의 파일은 Google 이 배포한 원본 그대로입니다.

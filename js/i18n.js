@@ -5,7 +5,8 @@
 //  · 한국어 원문을 그대로 '키' 로 쓴다 → 사전에 없으면 한국어가 그대로 나오므로
 //    번역이 빠져도 화면이 깨지지 않는다.
 //  · HTML 은 손대지 않는다. 페이지가 뜨면 DOM 을 훑어서 텍스트를 바꾼다.
-//  · 언어 설정은 localStorage 키 'language' 에 둔다.
+//  · 언어 설정은 localStorage 키 'snap-box:language' 에 둔다.
+//    dibrain.dev 의 다른 앱과 같은 출처라 앱 이름으로 시작한다. 옛 'language' 는 records.js 가 옮긴다.
 //  · 사용자가 적은 사업명·학교명·파일 이름은 사전에 없으므로 번역되지 않는다 (의도된 동작).
 //
 // 주의: 번역할 문장 안에 <span> 같은 인라인 요소를 넣지 말 것.
@@ -15,7 +16,7 @@ window.SnapLab = window.SnapLab || {};
 
 var GL_LANG = (function () {
   try {
-    var saved = localStorage.getItem('language');
+    var saved = localStorage.getItem('snap-box:language');
     if (saved === 'ko' || saved === 'en') return saved;
   } catch (e) {}
   var nav = (navigator.language || navigator.userLanguage || 'ko');
@@ -227,7 +228,13 @@ var GL_I18N = {
     'Hid {n} face(s). Flip through the photos and check nothing was missed',
   '얼굴 {n}개를 가렸습니다. {b}장은 얼굴을 못 찾았으니 넘겨 보며 확인해 주세요':
     'Hid {n} face(s). {b} photo(s) had no face found — please check them',
-  '체크한 {n}장을 뺄까요?': 'Remove the {n} checked photo(s)?'
+  '체크한 {n}장을 뺄까요?': 'Remove the {n} checked photo(s)?',
+
+  // ── 기록 전체 삭제 (맨 아래 줄, records.js) ──
+  '기록은 이 기기에만 저장됩니다. 사업명·학교명 스탬프와 설정': 'Saved only on this device. Project/school stamp and settings',
+  '기록 전체 삭제': 'Delete all records',
+  '이 앱에 저장된 기록을 모두 지웁니다(사업명·학교명·날짜 스탬프, 가림·크기·파일 이름 설정, 언어). 되돌릴 수 없습니다. 계속할까요?':
+    'This deletes everything Snap Box saved on this device (project, school and date stamp, masking/size/file-name settings, language). This cannot be undone. Continue?'
 };
 
 // 한국어 원문 → 현재 언어. 사전에 없으면 원문 그대로.
@@ -276,7 +283,7 @@ function localizeDOM(root) {
 
 // ── 언어 토글 버튼 (상단 바 .db-bar 오른쪽 끝의 #langToggle) ──
 function setLanguage(v) {
-  try { localStorage.setItem('language', v); } catch (e) {}
+  try { localStorage.setItem('snap-box:language', v); } catch (e) {}
   location.reload();
 }
 
